@@ -61,23 +61,23 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
       }
       return "Got it! I've updated the form with your request. Please check the details on the right side and feel free to modify anything before submitting.";
     } else {
-      // Thai conversational responses
+      // Thai formal responses
       if (lowerInput.includes('ขอบคุณ') || lowerInput.includes('ขอบใจ')) {
-        return "ยินดีครับ! มีอะไรให้ช่วยเพิ่มเติมเกี่ยวกับฟอร์มไหมครับ?";
+        return "ยินดีเป็นอย่างยิ่งครับ/ค่ะ หากท่านต้องการความช่วยเหลือเพิ่มเติมเกี่ยวกับแบบฟอร์ม กรุณาแจ้งให้ทราบครับ/ค่ะ";
       }
       if (lowerInput.includes('สวัสดี') || lowerInput.includes('หวัดดี') || lowerInput.includes('ฮัลโหล')) {
-        return "สวัสดีครับ! ผมมาช่วยคุณกรอกฟอร์มต่างๆ เช่น การยืมอุปกรณ์หรือจองห้องประชุม บอกผมได้เลยว่าต้องการอะไรครับ";
+        return "สวัสดีครับ/ค่ะ กระผมเป็นระบบช่วยเหลือในการกรอกแบบฟอร์มต่างๆ เช่น การยืมอุปกรณ์ การจองห้อง หรือการขอใช้บริการต่างๆ ท่านสามารถบอกความต้องการได้เลยครับ/ค่ะ";
       }
       if (lowerInput.includes('ช่วย') || lowerInput.includes('ไม่รู้') || lowerInput.includes('งง')) {
-        return "ได้เลยครับ! ผมช่วยกรอกฟอร์มได้หลายแบบ เช่น 'ขอยืมโปรเจคเตอร์วันพรุ่งนี้ตอนบ่าย' หรือ 'จองห้องประชุมเช้าวันศุกร์' คุณต้องการความช่วยเหลือเรื่องอะไรครับ?";
+        return "ได้เลยครับ/ค่ะ กระผมสามารถช่วยกรอกแบบฟอร์มได้หลายประเภท เช่น 'ขอยืมเครื่องฉายภาพวันพรุ่งนี้ช่วงบ่าย' หรือ 'จองห้องประชุมวันศุกร์ช่วงเช้า' ท่านต้องการความช่วยเหลือเรื่องใดครับ/ค่ะ";
       }
       if (lowerInput.includes('ยืม') || lowerInput.includes('ขอ') || lowerInput.includes('ต้องการ')) {
-        return "เยี่ยมเลยครับ! ผมได้กรอกฟอร์มตามที่คุณบอกแล้ว กรุณาดูรายละเอียดทางด้านขวา แล้วบอกผมได้เลยถ้าต้องการแก้ไขอะไร";
+        return "เรียบร้อยครับ/ค่ะ กระผมได้ดำเนินการกรอกแบบฟอร์มตามคำขอของท่านแล้ว กรุณาตรวจสอบรายละเอียดทางด้านขวา และแจ้งให้ทราบหากต้องการแก้ไขข้อมูลใดครับ/ค่ะ";
       }
       if (lowerInput.includes('จอง') || lowerInput.includes('ห้อง')) {
-        return "ดีมากครับ! ผมได้จัดเตรียมฟอร์มการจองให้แล้ว กรุณาตรวจสอบข้อมูลที่ผมกรอกให้ แล้วแก้ไขตามต้องการก่อนส่งครับ";
+        return "ดีมากครับ/ค่ะ กระผมได้จัดเตรียมแบบฟอร์มการจองให้ท่านแล้ว กรุณาตรวจสอบข้อมูลที่กระผมได้กรอกให้ และแก้ไขตามความเหมาะสมก่อนส่งครับ/ค่ะ";
       }
-      return "เข้าใจแล้วครับ! ผมได้อัปเดตฟอร์มตามคำขอของคุณแล้ว กรุณาตรวจสอบรายละเอียดทางด้านขวา และแก้ไขได้ตามต้องการก่อนส่งครับ";
+      return "เข้าใจแล้วครับ/ค่ะ กระผมได้ปรับปรุงแบบฟอร์มตามคำขอของท่านแล้ว กรุณาตรวจสอบรายละเอียดทางด้านขวา และสามารถแก้ไขได้ตามความต้องการก่อนส่งครับ/ค่ะ";
     }
   };
 
@@ -122,7 +122,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
           <MessageCircle className="w-5 h-5 text-blue-600" />
           <h2 className="text-lg font-semibold text-gray-800">{t('chatTitle')}</h2>
         </div>
-        <p className="text-sm text-gray-600 mt-1">{t('chatSubtitle')}</p>
       </div>
       
       <ScrollArea className="flex-1 p-4">
@@ -158,7 +157,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
             placeholder={t('chatPlaceholder')}
             className="flex-1"
           />
-          <Button onClick={handleSendMessage} className="px-4">
+          <Button onClick={handleSendMessage} className="px-4 bg-blue-600 hover:bg-blue-700">
             <Send className="w-4 h-4" />
           </Button>
         </div>
