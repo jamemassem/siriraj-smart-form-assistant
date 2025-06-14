@@ -39,11 +39,45 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
   // Generate contextual AI response based on user input
   const generateAIResponse = (userInput: string): string => {
     const isUserEnglish = isEnglish(userInput);
+    const lowerInput = userInput.toLowerCase();
     
+    // Conversational responses based on context
     if (isUserEnglish) {
-      return "I've updated the form based on your request. Please review the details and make any necessary changes before submitting.";
+      // English conversational responses
+      if (lowerInput.includes('thank') || lowerInput.includes('thanks')) {
+        return "You're welcome! Is there anything else I can help you with for your form?";
+      }
+      if (lowerInput.includes('hello') || lowerInput.includes('hi')) {
+        return "Hello! I'm here to help you fill out forms. Just tell me what you need - like borrowing equipment or booking a room.";
+      }
+      if (lowerInput.includes('help')) {
+        return "Of course! I can help you fill out various forms. For example, you can say things like 'I need to borrow a projector for tomorrow afternoon' or 'Book a meeting room for Friday morning'. What do you need help with?";
+      }
+      if (lowerInput.includes('borrow') || lowerInput.includes('need') || lowerInput.includes('request')) {
+        return "Perfect! I've filled out the form based on what you told me. Please take a look at the details on the right and let me know if you'd like me to adjust anything.";
+      }
+      if (lowerInput.includes('book') || lowerInput.includes('reserve')) {
+        return "Great! I've set up the booking form for you. Please review the information I've filled in and make any changes if needed before submitting.";
+      }
+      return "Got it! I've updated the form with your request. Please check the details on the right side and feel free to modify anything before submitting.";
     } else {
-      return "ผมได้อัปเดตฟอร์มตามคำขอของคุณแล้ว กรุณาตรวจสอบรายละเอียดและแก้ไขหากจำเป็นก่อนส่ง";
+      // Thai conversational responses
+      if (lowerInput.includes('ขอบคุณ') || lowerInput.includes('ขอบใจ')) {
+        return "ยินดีครับ! มีอะไรให้ช่วยเพิ่มเติมเกี่ยวกับฟอร์มไหมครับ?";
+      }
+      if (lowerInput.includes('สวัสดี') || lowerInput.includes('หวัดดี') || lowerInput.includes('ฮัลโหล')) {
+        return "สวัสดีครับ! ผมมาช่วยคุณกรอกฟอร์มต่างๆ เช่น การยืมอุปกรณ์หรือจองห้องประชุม บอกผมได้เลยว่าต้องการอะไรครับ";
+      }
+      if (lowerInput.includes('ช่วย') || lowerInput.includes('ไม่รู้') || lowerInput.includes('งง')) {
+        return "ได้เลยครับ! ผมช่วยกรอกฟอร์มได้หลายแบบ เช่น 'ขอยืมโปรเจคเตอร์วันพรุ่งนี้ตอนบ่าย' หรือ 'จองห้องประชุมเช้าวันศุกร์' คุณต้องการความช่วยเหลือเรื่องอะไรครับ?";
+      }
+      if (lowerInput.includes('ยืม') || lowerInput.includes('ขอ') || lowerInput.includes('ต้องการ')) {
+        return "เยี่ยมเลยครับ! ผมได้กรอกฟอร์มตามที่คุณบอกแล้ว กรุณาดูรายละเอียดทางด้านขวา แล้วบอกผมได้เลยถ้าต้องการแก้ไขอะไร";
+      }
+      if (lowerInput.includes('จอง') || lowerInput.includes('ห้อง')) {
+        return "ดีมากครับ! ผมได้จัดเตรียมฟอร์มการจองให้แล้ว กรุณาตรวจสอบข้อมูลที่ผมกรอกให้ แล้วแก้ไขตามต้องการก่อนส่งครับ";
+      }
+      return "เข้าใจแล้วครับ! ผมได้อัปเดตฟอร์มตามคำขอของคุณแล้ว กรุณาตรวจสอบรายละเอียดทางด้านขวา และแก้ไขได้ตามต้องการก่อนส่งครับ";
     }
   };
 
