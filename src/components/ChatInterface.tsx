@@ -4,6 +4,7 @@ import { Send, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Message {
   id: string;
@@ -17,10 +18,11 @@ interface ChatInterfaceProps {
 }
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
+  const { t } = useLanguage();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: "Hi! I'm here to help you fill out forms using natural language. Just tell me what you need - for example: 'I want to borrow a projector for my presentation next Monday from 2 PM to 4 PM'",
+      text: t('initialMessage'),
       isUser: false,
       timestamp: new Date()
     }
@@ -45,7 +47,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
     setTimeout(() => {
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: "I've updated the form based on your request. Please review the details and make any necessary changes before submitting.",
+        text: t('assistantResponse'),
         isUser: false,
         timestamp: new Date()
       };
@@ -64,9 +66,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
       <div className="p-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
         <div className="flex items-center gap-2">
           <MessageCircle className="w-5 h-5 text-blue-600" />
-          <h2 className="text-lg font-semibold text-gray-800">Form Assistant</h2>
+          <h2 className="text-lg font-semibold text-gray-800">{t('chatTitle')}</h2>
         </div>
-        <p className="text-sm text-gray-600 mt-1">Describe what you need and I'll fill the form for you</p>
+        <p className="text-sm text-gray-600 mt-1">{t('chatSubtitle')}</p>
       </div>
       
       <ScrollArea className="flex-1 p-4">
@@ -99,7 +101,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Type your request here... (e.g., 'Book a meeting room for tomorrow 3-5 PM')"
+            placeholder={t('chatPlaceholder')}
             className="flex-1"
           />
           <Button onClick={handleSendMessage} className="px-4">

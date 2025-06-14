@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export interface FormData {
   formType: string;
@@ -27,6 +28,7 @@ interface DynamicFormProps {
 }
 
 const DynamicForm: React.FC<DynamicFormProps> = ({ formData, onFormDataChange }) => {
+  const { t } = useLanguage();
   const [localFormData, setLocalFormData] = useState<FormData>(formData);
 
   useEffect(() => {
@@ -48,16 +50,16 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ formData, onFormDataChange })
     
     if (missingFields.length > 0) {
       toast({
-        title: "Missing Information",
-        description: `Please fill in: ${missingFields.join(', ')}`,
+        title: t('missingInfo'),
+        description: `${t('fillRequired')}: ${missingFields.map(field => t(field)).join(', ')}`,
         variant: "destructive"
       });
       return;
     }
 
     toast({
-      title: "Form Submitted Successfully!",
-      description: "Your request has been processed and submitted.",
+      title: t('submitSuccess'),
+      description: t('submitMessage'),
     });
     
     console.log('Form submitted:', localFormData);
@@ -68,9 +70,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ formData, onFormDataChange })
       <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50">
         <CardTitle className="flex items-center gap-2 text-gray-800">
           <FileText className="w-5 h-5 text-indigo-600" />
-          Dynamic Form
+          {t('formTitle')}
         </CardTitle>
-        <p className="text-sm text-gray-600">Review and edit the auto-filled information</p>
+        <p className="text-sm text-gray-600">{t('formSubtitle')}</p>
       </CardHeader>
       
       <CardContent className="p-6">
@@ -79,37 +81,37 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ formData, onFormDataChange })
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="formType" className="text-sm font-medium text-gray-700">
-                Form Type *
+                {t('formType')} {t('required')}
               </Label>
               <Select value={localFormData.formType} onValueChange={(value) => handleFieldChange('formType', value)}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select form type" />
+                  <SelectValue placeholder={t('selectFormType')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="equipment-request">Equipment Request</SelectItem>
-                  <SelectItem value="room-booking">Room Booking</SelectItem>
-                  <SelectItem value="service-request">Service Request</SelectItem>
-                  <SelectItem value="maintenance">Maintenance Request</SelectItem>
+                  <SelectItem value="equipment-request">{t('equipment-request')}</SelectItem>
+                  <SelectItem value="room-booking">{t('room-booking')}</SelectItem>
+                  <SelectItem value="service-request">{t('service-request')}</SelectItem>
+                  <SelectItem value="maintenance">{t('maintenance')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             
             <div className="space-y-2">
               <Label htmlFor="category" className="text-sm font-medium text-gray-700">
-                Category *
+                {t('category')} {t('required')}
               </Label>
               <Select value={localFormData.category} onValueChange={(value) => handleFieldChange('category', value)}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
+                  <SelectValue placeholder={t('selectCategory')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="notebook">Notebook</SelectItem>
-                  <SelectItem value="projector">Projector</SelectItem>
-                  <SelectItem value="meeting-room">Meeting Room</SelectItem>
-                  <SelectItem value="conference-room">Conference Room</SelectItem>
-                  <SelectItem value="laptop">Laptop</SelectItem>
-                  <SelectItem value="printer">Printer</SelectItem>
-                  <SelectItem value="camera">Camera</SelectItem>
+                  <SelectItem value="notebook">{t('notebook')}</SelectItem>
+                  <SelectItem value="projector">{t('projector')}</SelectItem>
+                  <SelectItem value="meeting-room">{t('meeting-room')}</SelectItem>
+                  <SelectItem value="conference-room">{t('conference-room')}</SelectItem>
+                  <SelectItem value="laptop">{t('laptop')}</SelectItem>
+                  <SelectItem value="printer">{t('printer')}</SelectItem>
+                  <SelectItem value="camera">{t('camera')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -120,7 +122,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ formData, onFormDataChange })
             <div className="space-y-2">
               <Label htmlFor="date" className="text-sm font-medium text-gray-700">
                 <Calendar className="w-4 h-4 inline mr-1" />
-                Date *
+                {t('date')} {t('required')}
               </Label>
               <Input
                 type="date"
@@ -133,7 +135,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ formData, onFormDataChange })
             <div className="space-y-2">
               <Label htmlFor="startTime" className="text-sm font-medium text-gray-700">
                 <Clock className="w-4 h-4 inline mr-1" />
-                Start Time
+                {t('startTime')}
               </Label>
               <Input
                 type="time"
@@ -145,7 +147,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ formData, onFormDataChange })
             
             <div className="space-y-2">
               <Label htmlFor="endTime" className="text-sm font-medium text-gray-700">
-                End Time
+                {t('endTime')}
               </Label>
               <Input
                 type="time"
@@ -159,12 +161,12 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ formData, onFormDataChange })
           {/* Purpose */}
           <div className="space-y-2">
             <Label htmlFor="purpose" className="text-sm font-medium text-gray-700">
-              Purpose
+              {t('purpose')}
             </Label>
             <Textarea
               value={localFormData.purpose}
               onChange={(e) => handleFieldChange('purpose', e.target.value)}
-              placeholder="Describe the purpose of your request..."
+              placeholder={t('purposePlaceholder')}
               className="min-h-[80px] resize-none"
             />
           </div>
@@ -173,40 +175,40 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ formData, onFormDataChange })
           <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
             <div className="flex items-center gap-2 mb-3">
               <User className="w-4 h-4 text-gray-600" />
-              <h3 className="text-sm font-medium text-gray-700">User Information</h3>
+              <h3 className="text-sm font-medium text-gray-700">{t('userInfo')}</h3>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="userName" className="text-sm font-medium text-gray-700">
-                  Name *
+                  {t('name')} {t('required')}
                 </Label>
                 <Input
                   value={localFormData.userName}
                   onChange={(e) => handleFieldChange('userName', e.target.value)}
-                  placeholder="Your full name"
+                  placeholder={t('namePlaceholder')}
                 />
               </div>
               
               <div className="space-y-2">
                 <Label htmlFor="department" className="text-sm font-medium text-gray-700">
-                  Department
+                  {t('department')}
                 </Label>
                 <Input
                   value={localFormData.department}
                   onChange={(e) => handleFieldChange('department', e.target.value)}
-                  placeholder="Your department"
+                  placeholder={t('departmentPlaceholder')}
                 />
               </div>
               
               <div className="space-y-2">
                 <Label htmlFor="contact" className="text-sm font-medium text-gray-700">
-                  Contact
+                  {t('contact')}
                 </Label>
                 <Input
                   value={localFormData.contact}
                   onChange={(e) => handleFieldChange('contact', e.target.value)}
-                  placeholder="Phone or email"
+                  placeholder={t('contactPlaceholder')}
                 />
               </div>
             </div>
@@ -219,7 +221,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ formData, onFormDataChange })
               className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium py-3 transition-all duration-200"
             >
               <Send className="w-4 h-4 mr-2" />
-              Submit Request
+              {t('submitButton')}
             </Button>
           </div>
         </form>

@@ -2,9 +2,12 @@
 import React, { useState } from 'react';
 import ChatInterface from '@/components/ChatInterface';
 import DynamicForm, { FormData } from '@/components/DynamicForm';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
+import { LanguageProvider, useLanguage } from '@/contexts/LanguageContext';
 import { parseNaturalLanguage } from '@/utils/naturalLanguageParser';
 
-const Index = () => {
+const IndexContent = () => {
+  const { t } = useLanguage();
   const [formData, setFormData] = useState<FormData>({
     formType: '',
     category: '',
@@ -43,14 +46,19 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-4">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-800 mb-2">
-            Smart Form Assistant
-          </h1>
-          <p className="text-lg text-gray-600">
-            Describe what you need in natural language, and I'll fill out the form for you
-          </p>
+        {/* Header with Language Switcher */}
+        <div className="flex justify-between items-start mb-8">
+          <div className="text-center flex-1">
+            <h1 className="text-4xl font-bold text-gray-800 mb-2">
+              {t('title')}
+            </h1>
+            <p className="text-lg text-gray-600">
+              {t('subtitle')}
+            </p>
+          </div>
+          <div className="ml-4">
+            <LanguageSwitcher />
+          </div>
         </div>
 
         {/* Split Layout */}
@@ -68,13 +76,16 @@ const Index = () => {
             />
           </div>
         </div>
-
-        {/* Footer */}
-        <div className="text-center mt-8 text-sm text-gray-500">
-          <p>Try saying: "I need to borrow a projector for my presentation next Monday from 2 PM to 4 PM"</p>
-        </div>
       </div>
     </div>
+  );
+};
+
+const Index = () => {
+  return (
+    <LanguageProvider>
+      <IndexContent />
+    </LanguageProvider>
   );
 };
 
