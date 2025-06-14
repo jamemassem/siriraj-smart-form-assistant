@@ -52,9 +52,6 @@ const IndexContent = () => {
             <h1 className="text-4xl font-bold text-gray-800 mb-2">
               {t('title')}
             </h1>
-            <p className="text-lg text-gray-600">
-              {t('subtitle')}
-            </p>
           </div>
           <div className="ml-4">
             <LanguageSwitcher />

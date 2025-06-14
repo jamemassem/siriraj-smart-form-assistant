@@ -13,7 +13,6 @@ const translations = {
   en: {
     // Header
     title: 'Smart Form Assistant',
-    subtitle: 'Describe what you need in natural language, and I\'ll fill out the form for you',
     
     // Language switcher
     english: 'EN',
@@ -72,7 +71,6 @@ const translations = {
   th: {
     // Header
     title: 'ผู้ช่วยฟอร์มอัจฉริยะ',
-    subtitle: 'อธิบายสิ่งที่คุณต้องการด้วยภาษาธรรมชาติ และฉันจะกรอกฟอร์มให้คุณ',
     
     // Language switcher
     english: 'EN',
@@ -82,8 +80,9 @@ const translations = {
     chatTitle: 'ผู้ช่วยฟอร์ม',
     chatSubtitle: 'อธิบายสิ่งที่คุณต้องการ และฉันจะกรอกฟอร์มให้คุณ',
     chatPlaceholder: 'พิมพ์คำขอของคุณที่นี่ (เช่น \'ขอยืมโน้ตบุ๊คเช้าวันศุกร์นี้\')',
-    initialMessage: 'สวัสดี! ฉันมาช่วยคุณกรอกฟอร์มด้วยภาษาธรรมชาติ เพียงบอกฉันว่าคุณต้องการอะไร - เช่น: \'ฉันต้องการยืมโปรเจคเตอร์สำหรับการนำเสนอในวันจันทร์หน้า ตั้งแต่บ่าย 2 ถึง 4 โมง\'',
-    assistantResponse: 'ฉันได้อัปเดตฟอร์มตามคำขอของคุณแล้ว กรุณาตรวจสอบรายละเอียดและแก้ไขหากจำเป็นก่อนส่ง',
+    initialMessage: 'สวัสดีครับ! ผมมาช่วยคุณกรอกฟอร์มด้วยภาษาธรรมชาติ เพียงบอกผมว่าคุณต้องการอะไร - เช่น: \'ผมต้องการยืมโปรเจคเตอร์สำหรับการนำเสนอในวันจันทร์หน้า ตั้งแต่บ่าย 2 ถึง 4 โมง\'',
+    assistantResponse: 'ผมได้อัปเดตฟอร์มตามคำขอของคุณแล้ว กรุณาตรวจสอบรายละเอียดและแก้ไขหากจำเป็นก่อนส่ง',
+    assistantResponseEn: 'I\'ve updated the form based on your request. Please review the details and make any necessary changes before submitting.',
     
     // Form
     formTitle: 'ฟอร์มแบบไดนามิค',
@@ -133,7 +132,7 @@ const translations = {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [language, setLanguage] = useState<Language>('en');
+  const [language, setLanguage] = useState<Language>('th'); // Default to Thai
 
   const t = (key: string): string => {
     return translations[language][key as keyof typeof translations['en']] || key;

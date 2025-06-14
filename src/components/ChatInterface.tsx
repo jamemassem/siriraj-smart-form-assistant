@@ -29,6 +29,24 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
   ]);
   const [inputValue, setInputValue] = useState('');
 
+  // Function to detect if text is primarily English
+  const isEnglish = (text: string): boolean => {
+    const englishWords = text.match(/[a-zA-Z]+/g) || [];
+    const thaiChars = text.match(/[\u0E00-\u0E7F]/g) || [];
+    return englishWords.length > thaiChars.length;
+  };
+
+  // Generate contextual AI response based on user input
+  const generateAIResponse = (userInput: string): string => {
+    const isUserEnglish = isEnglish(userInput);
+    
+    if (isUserEnglish) {
+      return "I've updated the form based on your request. Please review the details and make any necessary changes before submitting.";
+    } else {
+      return "ผมได้อัปเดตฟอร์มตามคำขอของคุณแล้ว กรุณาตรวจสอบรายละเอียดและแก้ไขหากจำเป็นก่อนส่ง";
+    }
+  };
+
   const handleSendMessage = () => {
     if (!inputValue.trim()) return;
 
@@ -41,13 +59,15 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
 
     setMessages(prev => [...prev, userMessage]);
     onMessageSent(inputValue);
+    
+    const currentInput = inputValue;
     setInputValue('');
 
     // Add assistant response
     setTimeout(() => {
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: t('assistantResponse'),
+        text: generateAIResponse(currentInput),
         isUser: false,
         timestamp: new Date()
       };

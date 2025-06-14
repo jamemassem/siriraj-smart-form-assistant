@@ -15,69 +15,103 @@ export const parseNaturalLanguage = (input: string): ParsedData => {
   const lowerInput = input.toLowerCase();
   const parsed: ParsedData = {};
 
-  // Parse form type and category
-  if (lowerInput.includes('borrow') || lowerInput.includes('need') || lowerInput.includes('get')) {
+  // Enhanced form type detection (Thai and English)
+  if (lowerInput.includes('borrow') || lowerInput.includes('need') || lowerInput.includes('get') || 
+      lowerInput.includes('ยืม') || lowerInput.includes('ขอ') || lowerInput.includes('ต้องการ')) {
     parsed.formType = 'equipment-request';
-  } else if (lowerInput.includes('book') || lowerInput.includes('reserve') || lowerInput.includes('room')) {
+  } else if (lowerInput.includes('book') || lowerInput.includes('reserve') || lowerInput.includes('room') ||
+             lowerInput.includes('จอง') || lowerInput.includes('ห้อง')) {
     parsed.formType = 'room-booking';
+  } else if (lowerInput.includes('service') || lowerInput.includes('บริการ')) {
+    parsed.formType = 'service-request';
+  } else if (lowerInput.includes('maintenance') || lowerInput.includes('repair') || 
+             lowerInput.includes('ซ่อม') || lowerInput.includes('บำรุง')) {
+    parsed.formType = 'maintenance';
   }
 
-  // Parse category
-  if (lowerInput.includes('notebook') || lowerInput.includes('laptop')) {
+  // Enhanced category detection (Thai and English)
+  if (lowerInput.includes('notebook') || lowerInput.includes('laptop') || 
+      lowerInput.includes('โน้ตบุ๊ค') || lowerInput.includes('แล็ปท็อป')) {
     parsed.category = 'notebook';
-  } else if (lowerInput.includes('projector')) {
+  } else if (lowerInput.includes('projector') || lowerInput.includes('โปรเจคเตอร์') || 
+             lowerInput.includes('โปรเจ็คเตอร์')) {
     parsed.category = 'projector';
-  } else if (lowerInput.includes('meeting room')) {
+  } else if (lowerInput.includes('meeting room') || lowerInput.includes('ห้องประชุม')) {
     parsed.category = 'meeting-room';
-  } else if (lowerInput.includes('conference room')) {
+  } else if (lowerInput.includes('conference room') || lowerInput.includes('ห้องคอนเฟอเรนซ์')) {
     parsed.category = 'conference-room';
-  } else if (lowerInput.includes('printer')) {
+  } else if (lowerInput.includes('printer') || lowerInput.includes('เครื่องพิมพ์')) {
     parsed.category = 'printer';
-  } else if (lowerInput.includes('camera')) {
+  } else if (lowerInput.includes('camera') || lowerInput.includes('กล้อง')) {
     parsed.category = 'camera';
   }
 
-  // Parse date
+  // Enhanced date parsing (Thai and English)
   const today = new Date();
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
   
-  if (lowerInput.includes('today')) {
+  if (lowerInput.includes('today') || lowerInput.includes('วันนี้')) {
     parsed.date = today.toISOString().split('T')[0];
-  } else if (lowerInput.includes('tomorrow')) {
+  } else if (lowerInput.includes('tomorrow') || lowerInput.includes('พรุ่งนี้')) {
     parsed.date = tomorrow.toISOString().split('T')[0];
-  } else if (lowerInput.includes('friday')) {
-    const friday = getNextWeekday(5); // Friday is day 5
+  } else if (lowerInput.includes('friday') || lowerInput.includes('วันศุกร์')) {
+    const friday = getNextWeekday(5);
     parsed.date = friday.toISOString().split('T')[0];
-  } else if (lowerInput.includes('monday')) {
+  } else if (lowerInput.includes('monday') || lowerInput.includes('วันจันทร์')) {
     const monday = getNextWeekday(1);
     parsed.date = monday.toISOString().split('T')[0];
-  } else if (lowerInput.includes('tuesday')) {
+  } else if (lowerInput.includes('tuesday') || lowerInput.includes('วันอังคาร')) {
     const tuesday = getNextWeekday(2);
     parsed.date = tuesday.toISOString().split('T')[0];
-  } else if (lowerInput.includes('wednesday')) {
+  } else if (lowerInput.includes('wednesday') || lowerInput.includes('วันพุธ')) {
     const wednesday = getNextWeekday(3);
     parsed.date = wednesday.toISOString().split('T')[0];
-  } else if (lowerInput.includes('thursday')) {
+  } else if (lowerInput.includes('thursday') || lowerInput.includes('วันพฤหัสบดี')) {
     const thursday = getNextWeekday(4);
     parsed.date = thursday.toISOString().split('T')[0];
-  } else if (lowerInput.includes('saturday')) {
+  } else if (lowerInput.includes('saturday') || lowerInput.includes('วันเสาร์')) {
     const saturday = getNextWeekday(6);
     parsed.date = saturday.toISOString().split('T')[0];
-  } else if (lowerInput.includes('sunday')) {
+  } else if (lowerInput.includes('sunday') || lowerInput.includes('วันอาทิตย์')) {
     const sunday = getNextWeekday(0);
     parsed.date = sunday.toISOString().split('T')[0];
   }
 
-  // Parse time
+  // Enhanced time parsing (Thai and English)
   const timePatterns = [
     /(\d{1,2})\s*(?::|\.)\s*(\d{2})\s*(am|pm)/gi,
     /(\d{1,2})\s*(am|pm)/gi,
-    /(\d{1,2})\s*(?::|\.)\s*(\d{2})/g
+    /(\d{1,2})\s*(?::|\.)\s*(\d{2})/g,
+    /(\d{1,2})\s*(?:น\.|นาฬิกา)/g, // Thai time patterns
+    /บ่าย\s*(\d{1,2})/g, // Thai afternoon
+    /เช้า\s*(\d{1,2})/g, // Thai morning
   ];
 
   const times: string[] = [];
   
+  // Handle Thai time expressions
+  if (lowerInput.includes('เช้า')) {
+    const morningMatch = lowerInput.match(/เช้า.*?(\d{1,2})/);
+    if (morningMatch) {
+      const hour = parseInt(morningMatch[1]);
+      times.push(`${hour.toString().padStart(2, '0')}:00`);
+    } else {
+      times.push('09:00'); // Default morning time
+    }
+  }
+  
+  if (lowerInput.includes('บ่าย')) {
+    const afternoonMatch = lowerInput.match(/บ่าย.*?(\d{1,2})/);
+    if (afternoonMatch) {
+      let hour = parseInt(afternoonMatch[1]);
+      if (hour < 12) hour += 12;
+      times.push(`${hour.toString().padStart(2, '0')}:00`);
+    } else {
+      times.push('13:00'); // Default afternoon time
+    }
+  }
+
   timePatterns.forEach(pattern => {
     let match;
     while ((match = pattern.exec(input)) !== null) {
@@ -92,7 +126,9 @@ export const parseNaturalLanguage = (input: string): ParsedData => {
       }
       
       const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-      times.push(timeString);
+      if (!times.includes(timeString)) {
+        times.push(timeString);
+      }
     }
   });
 
@@ -103,15 +139,20 @@ export const parseNaturalLanguage = (input: string): ParsedData => {
     parsed.endTime = times[1];
   }
 
-  // Parse purpose from context
-  if (lowerInput.includes('presentation') || lowerInput.includes('present')) {
-    parsed.purpose = 'For presentation purposes';
-  } else if (lowerInput.includes('meeting')) {
-    parsed.purpose = 'For meeting purposes';
-  } else if (lowerInput.includes('work') || lowerInput.includes('project')) {
-    parsed.purpose = 'For work/project purposes';
-  } else if (lowerInput.includes('class') || lowerInput.includes('lecture')) {
-    parsed.purpose = 'For educational purposes';
+  // Enhanced purpose detection (Thai and English)
+  if (lowerInput.includes('presentation') || lowerInput.includes('present') || 
+      lowerInput.includes('นำเสนอ') || lowerInput.includes('เพรซเซนต์')) {
+    parsed.purpose = 'For presentation purposes / สำหรับการนำเสนอ';
+  } else if (lowerInput.includes('meeting') || lowerInput.includes('ประชุม')) {
+    parsed.purpose = 'For meeting purposes / สำหรับการประชุม';
+  } else if (lowerInput.includes('work') || lowerInput.includes('project') || 
+             lowerInput.includes('งาน') || lowerInput.includes('โปรเจค')) {
+    parsed.purpose = 'For work/project purposes / สำหรับงาน/โปรเจค';
+  } else if (lowerInput.includes('class') || lowerInput.includes('lecture') || 
+             lowerInput.includes('เรียน') || lowerInput.includes('บรรยาย')) {
+    parsed.purpose = 'For educational purposes / สำหรับการศึกษา';
+  } else if (lowerInput.includes('training') || lowerInput.includes('อบรม')) {
+    parsed.purpose = 'For training purposes / สำหรับการอบรม';
   }
 
   return parsed;
