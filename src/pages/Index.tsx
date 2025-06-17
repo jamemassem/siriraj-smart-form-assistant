@@ -1,45 +1,45 @@
 
 import React, { useState } from 'react';
 import ChatInterface from '@/components/ChatInterface';
-import DynamicForm, { FormData } from '@/components/DynamicForm';
+import ComputerEquipmentForm, { ComputerEquipmentFormData } from '@/components/ComputerEquipmentForm';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { LanguageProvider, useLanguage } from '@/contexts/LanguageContext';
-import { parseNaturalLanguage } from '@/utils/naturalLanguageParser';
 
 const IndexContent = () => {
   const { t } = useLanguage();
-  const [formData, setFormData] = useState<FormData>({
-    formType: '',
-    category: '',
-    date: '',
-    startTime: '',
-    endTime: '',
-    purpose: '',
-    userName: '',
+  const [formData, setFormData] = useState<ComputerEquipmentFormData>({
+    borrowerName: '',
+    position: '',
     department: '',
-    contact: ''
+    phone: '',
+    email: '',
+    equipmentType: '',
+    equipmentDetails: '',
+    quantity: '1',
+    borrowDate: '',
+    returnDate: '',
+    purpose: '',
+    attachments: []
   });
 
-  const handleMessageSent = (message: string) => {
+  const handleMessageSent = (message: string, parsedData: any) => {
     console.log('Processing message:', message);
-    
-    const parsedData = parseNaturalLanguage(message);
     console.log('Parsed data:', parsedData);
     
     // Update form data with parsed information
     const updatedFormData = { ...formData };
     
     Object.keys(parsedData).forEach(key => {
-      const value = parsedData[key as keyof typeof parsedData];
-      if (value) {
-        updatedFormData[key as keyof FormData] = value;
+      const value = parsedData[key];
+      if (value && key in updatedFormData) {
+        updatedFormData[key as keyof ComputerEquipmentFormData] = value;
       }
     });
     
     setFormData(updatedFormData);
   };
 
-  const handleFormDataChange = (newFormData: FormData) => {
+  const handleFormDataChange = (newFormData: ComputerEquipmentFormData) => {
     setFormData(newFormData);
   };
 
@@ -65,9 +65,9 @@ const IndexContent = () => {
             <ChatInterface onMessageSent={handleMessageSent} />
           </div>
 
-          {/* Right Panel - Dynamic Form */}
+          {/* Right Panel - Computer Equipment Form */}
           <div className="order-1 lg:order-2">
-            <DynamicForm 
+            <ComputerEquipmentForm 
               formData={formData} 
               onFormDataChange={handleFormDataChange}
             />

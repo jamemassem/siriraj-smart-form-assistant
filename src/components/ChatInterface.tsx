@@ -1,10 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Send, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { llmService } from '@/services/llmService';
 
 interface Message {
   id: string;
@@ -14,75 +15,31 @@ interface Message {
 }
 
 interface ChatInterfaceProps {
-  onMessageSent: (message: string) => void;
+  onMessageSent: (message: string, parsedData: any) => void;
 }
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
-  const { t } = useLanguage();
-  const [messages, setMessages] = useState<Message[]>([
-    {
+  const { t, language } = useLanguage();
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [inputValue, setInputValue] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    // Initialize with welcome message
+    const welcomeMessage: Message = {
       id: '1',
       text: t('initialMessage'),
       isUser: false,
       timestamp: new Date()
-    }
-  ]);
-  const [inputValue, setInputValue] = useState('');
-
-  // Function to detect if text is primarily English
-  const isEnglish = (text: string): boolean => {
-    const englishWords = text.match(/[a-zA-Z]+/g) || [];
-    const thaiChars = text.match(/[\u0E00-\u0E7F]/g) || [];
-    return englishWords.length > thaiChars.length;
-  };
-
-  // Generate contextual AI response based on user input
-  const generateAIResponse = (userInput: string): string => {
-    const isUserEnglish = isEnglish(userInput);
-    const lowerInput = userInput.toLowerCase();
+    };
+    setMessages([welcomeMessage]);
     
-    // Conversational responses based on context
-    if (isUserEnglish) {
-      // English conversational responses
-      if (lowerInput.includes('thank') || lowerInput.includes('thanks')) {
-        return "You're welcome! Is there anything else I can help you with for your form?";
-      }
-      if (lowerInput.includes('hello') || lowerInput.includes('hi')) {
-        return "Hello! I'm here to help you fill out forms. Just tell me what you need - like borrowing equipment or booking a room.";
-      }
-      if (lowerInput.includes('help')) {
-        return "Of course! I can help you fill out various forms. For example, you can say things like 'I need to borrow a projector for tomorrow afternoon' or 'Book a meeting room for Friday morning'. What do you need help with?";
-      }
-      if (lowerInput.includes('borrow') || lowerInput.includes('need') || lowerInput.includes('request')) {
-        return "Perfect! I've filled out the form based on what you told me. Please take a look at the details on the right and let me know if you'd like me to adjust anything.";
-      }
-      if (lowerInput.includes('book') || lowerInput.includes('reserve')) {
-        return "Great! I've set up the booking form for you. Please review the information I've filled in and make any changes if needed before submitting.";
-      }
-      return "Got it! I've updated the form with your request. Please check the details on the right side and feel free to modify anything before submitting.";
-    } else {
-      // Thai formal responses
-      if (lowerInput.includes('ขอบคุณ') || lowerInput.includes('ขอบใจ')) {
-        return "ยินดีเป็นอย่างยิ่งครับ/ค่ะ หากท่านต้องการความช่วยเหลือเพิ่มเติมเกี่ยวกับแบบฟอร์ม กรุณาแจ้งให้ทราบครับ/ค่ะ";
-      }
-      if (lowerInput.includes('สวัสดี') || lowerInput.includes('หวัดดี') || lowerInput.includes('ฮัลโหล')) {
-        return "สวัสดีครับ/ค่ะ กระผมเป็นระบบช่วยเหลือในการกรอกแบบฟอร์มต่างๆ เช่น การยืมอุปกรณ์ การจองห้อง หรือการขอใช้บริการต่างๆ ท่านสามารถบอกความต้องการได้เลยครับ/ค่ะ";
-      }
-      if (lowerInput.includes('ช่วย') || lowerInput.includes('ไม่รู้') || lowerInput.includes('งง')) {
-        return "ได้เลยครับ/ค่ะ กระผมสามารถช่วยกรอกแบบฟอร์มได้หลายประเภท เช่น 'ขอยืมเครื่องฉายภาพวันพรุ่งนี้ช่วงบ่าย' หรือ 'จองห้องประชุมวันศุกร์ช่วงเช้า' ท่านต้องการความช่วยเหลือเรื่องใดครับ/ค่ะ";
-      }
-      if (lowerInput.includes('ยืม') || lowerInput.includes('ขอ') || lowerInput.includes('ต้องการ')) {
-        return "เรียบร้อยครับ/ค่ะ กระผมได้ดำเนินการกรอกแบบฟอร์มตามคำขอของท่านแล้ว กรุณาตรวจสอบรายละเอียดทางด้านขวา และแจ้งให้ทราบหากต้องการแก้ไขข้อมูลใดครับ/ค่ะ";
-      }
-      if (lowerInput.includes('จอง') || lowerInput.includes('ห้อง')) {
-        return "ดีมากครับ/ค่ะ กระผมได้จัดเตรียมแบบฟอร์มการจองให้ท่านแล้ว กรุณาตรวจสอบข้อมูลที่กระผมได้กรอกให้ และแก้ไขตามความเหมาะสมก่อนส่งครับ/ค่ะ";
-      }
-      return "เข้าใจแล้วครับ/ค่ะ กระผมได้ปรับปรุงแบบฟอร์มตามคำขอของท่านแล้ว กรุณาตรวจสอบรายละเอียดทางด้านขวา และสามารถแก้ไขได้ตามความต้องการก่อนส่งครับ/ค่ะ";
-    }
-  };
+    // Initialize LLM service
+    llmService.initialize();
+  }, [t]);
 
-  const handleSendMessage = () => {
-    if (!inputValue.trim()) return;
+  const handleSendMessage = async () => {
+    if (!inputValue.trim() || isProcessing) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -92,21 +49,54 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
     };
 
     setMessages(prev => [...prev, userMessage]);
-    onMessageSent(inputValue);
+    setIsProcessing(true);
     
     const currentInput = inputValue;
     setInputValue('');
 
-    // Add assistant response
-    setTimeout(() => {
-      const assistantMessage: Message = {
+    try {
+      // Detect language and parse with LLM
+      const detectedLanguage = llmService.detectLanguage(currentInput);
+      console.log('Detected language:', detectedLanguage);
+      
+      // Parse the equipment request
+      const parsedData = await llmService.parseEquipmentRequest(currentInput);
+      
+      // Send parsed data to parent component
+      onMessageSent(currentInput, parsedData);
+      
+      // Generate AI response
+      const aiResponse = llmService.generateResponse(currentInput, detectedLanguage);
+      
+      // Add assistant response
+      setTimeout(() => {
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          text: aiResponse,
+          isUser: false,
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+        setIsProcessing(false);
+      }, 800);
+      
+    } catch (error) {
+      console.error('Error processing message:', error);
+      setIsProcessing(false);
+      
+      // Fallback response
+      const fallbackResponse = language === 'th' 
+        ? "ขออภัยครับ เกิดข้อผิดพลาดในการประมวลผล กรุณาลองใหม่อีกครั้งครับ"
+        : "Sorry, there was an error processing your request. Please try again.";
+        
+      const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: generateAIResponse(currentInput),
+        text: fallbackResponse,
         isUser: false,
         timestamp: new Date()
       };
-      setMessages(prev => [...prev, assistantMessage]);
-    }, 500);
+      setMessages(prev => [...prev, errorMessage]);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -132,19 +122,30 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
               className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-[80%] p-3 rounded-lg ${
+                className={`max-w-[85%] p-3 rounded-lg ${
                   message.isUser
                     ? 'bg-blue-600 text-white rounded-br-sm'
                     : 'bg-gray-100 text-gray-800 rounded-bl-sm'
                 }`}
               >
-                <p className="text-sm">{message.text}</p>
+                <p className="text-sm whitespace-pre-wrap">{message.text}</p>
                 <p className={`text-xs mt-1 ${message.isUser ? 'text-blue-100' : 'text-gray-500'}`}>
                   {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </p>
               </div>
             </div>
           ))}
+          {isProcessing && (
+            <div className="flex justify-start">
+              <div className="bg-gray-100 text-gray-800 rounded-lg rounded-bl-sm p-3">
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </ScrollArea>
       
@@ -155,9 +156,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
             onChange={(e) => setInputValue(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder={t('chatPlaceholder')}
-            className="flex-1"
+            className="flex-1 text-base"
+            disabled={isProcessing}
           />
-          <Button onClick={handleSendMessage} className="px-4 bg-blue-600 hover:bg-blue-700">
+          <Button 
+            onClick={handleSendMessage} 
+            className="px-4 bg-blue-600 hover:bg-blue-700"
+            disabled={isProcessing || !inputValue.trim()}
+          >
             <Send className="w-4 h-4" />
           </Button>
         </div>
