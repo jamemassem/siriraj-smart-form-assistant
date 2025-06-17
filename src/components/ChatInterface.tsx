@@ -4,6 +4,7 @@ import { Send, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { llmService } from '@/services/llmService';
 
@@ -111,78 +112,80 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-lg shadow-sm border">
-      <div className="p-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
-        <div className="flex items-center gap-2">
+    <Card className="h-full">
+      <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
+        <CardTitle className="flex items-center gap-2 text-gray-800">
           <MessageCircle className="w-5 h-5 text-blue-600" />
-          <h2 className="text-lg font-semibold text-gray-800">{t('chatTitle')}</h2>
-        </div>
+          ผู้ช่วยกรอกแบบฟอร์มอัตโนมัติ
+        </CardTitle>
         <p className="text-xs text-gray-600 mt-1">
           {language === 'th' ? '💬 คุยได้ทุกเรื่อง | 📝 ขอยืมอุปกรณ์ได้เลย' : '💬 Chat about anything | 📝 Request equipment easily'}
         </p>
-      </div>
+      </CardHeader>
       
-      <ScrollArea className="flex-1 p-4">
-        <div className="space-y-4">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
-            >
+      <CardContent className="p-0 flex flex-col h-full">
+        <ScrollArea className="flex-1 p-4">
+          <div className="space-y-4">
+            {messages.map((message) => (
               <div
-                className={`max-w-[85%] p-3 rounded-lg ${
-                  message.isUser
-                    ? 'bg-blue-600 text-white rounded-br-sm'
-                    : 'bg-gray-100 text-gray-800 rounded-bl-sm'
-                }`}
+                key={message.id}
+                className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
               >
-                <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.text}</p>
-                <p className={`text-xs mt-2 ${message.isUser ? 'text-blue-100' : 'text-gray-500'}`}>
-                  {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </p>
-              </div>
-            </div>
-          ))}
-          {isProcessing && (
-            <div className="flex justify-start">
-              <div className="bg-gray-100 text-gray-800 rounded-lg rounded-bl-sm p-3">
-                <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                <div
+                  className={`max-w-[85%] p-3 rounded-lg ${
+                    message.isUser
+                      ? 'bg-blue-600 text-white rounded-br-sm'
+                      : 'bg-gray-100 text-gray-800 rounded-bl-sm'
+                  }`}
+                >
+                  <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.text}</p>
+                  <p className={`text-xs mt-2 ${message.isUser ? 'text-blue-100' : 'text-gray-500'}`}>
+                    {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </p>
                 </div>
               </div>
-            </div>
-          )}
+            ))}
+            {isProcessing && (
+              <div className="flex justify-start">
+                <div className="bg-gray-100 text-gray-800 rounded-lg rounded-bl-sm p-3">
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+        
+        <div className="p-4 border-t bg-gray-50">
+          <div className="flex gap-2">
+            <Input
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder={t('chatPlaceholder')}
+              className="flex-1 text-base resize-none"
+              disabled={isProcessing}
+            />
+            <Button 
+              onClick={handleSendMessage} 
+              className="px-4 bg-blue-600 hover:bg-blue-700 transition-colors"
+              disabled={isProcessing || !inputValue.trim()}
+            >
+              <Send className="w-4 h-4" />
+            </Button>
+          </div>
+          <p className="text-xs text-gray-500 mt-2 text-center">
+            {language === 'th' 
+              ? 'Enter = ส่ง | Shift+Enter = บรรทัดใหม่'
+              : 'Enter = Send | Shift+Enter = New line'
+            }
+          </p>
         </div>
-      </ScrollArea>
-      
-      <div className="p-4 border-t bg-gray-50">
-        <div className="flex gap-2">
-          <Input
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder={t('chatPlaceholder')}
-            className="flex-1 text-base resize-none"
-            disabled={isProcessing}
-          />
-          <Button 
-            onClick={handleSendMessage} 
-            className="px-4 bg-blue-600 hover:bg-blue-700 transition-colors"
-            disabled={isProcessing || !inputValue.trim()}
-          >
-            <Send className="w-4 h-4" />
-          </Button>
-        </div>
-        <p className="text-xs text-gray-500 mt-2 text-center">
-          {language === 'th' 
-            ? 'Enter = ส่ง | Shift+Enter = บรรทัดใหม่'
-            : 'Enter = Send | Shift+Enter = New line'
-          }
-        </p>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 

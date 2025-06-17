@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 export type Language = 'th' | 'en';
@@ -20,7 +19,7 @@ const translations = {
     
     // Chat interface
     chatTitle: 'ผู้ช่วยระบบฟอร์ม',
-    initialMessage: 'สวัสดีครับ ผมเป็นผู้ช่วยในการกรอกแบบฟอร์ม\nคุณสามารถพูดคุยหรือสอบถามอะไรก็ได้ครับ 😄\nและถ้าคุณต้องการกรอกฟอร์ม เช่น\n"ขอยืมโปรเจคเตอร์วันศุกร์หน้า 13.00–15.00 ที่ห้องประชุม"\nผมจะช่วยกรอกให้โดยอัตโนมัติครับ\n\nHello! I\'m a Smart Form Assistant here to help you fill out any form.\nFeel free to chat or ask questions! And when you say something like:\n"I want to borrow a projector next Friday from 1 PM to 3 PM"\nI\'ll fill in the form for you right away. 😊',
+    initialMessage: 'สวัสดีครับ ผมเป็นผู้ช่วยในการกรอกแบบฟอร์มอัตโนมัติ\nท่านสามารถบอกความต้องการได้เลย เช่น\n"ขอยืมโน๊ตบุ๊คศุกร์หน้า 13.00–15.00 ที่ห้องประชุมชั้น 2"',
     chatPlaceholder: 'พิมพ์ข้อความที่นี่...',
     
     // Form navigation
@@ -46,11 +45,11 @@ const translations = {
     employeeId: 'รหัสพนักงาน',
     fullName: 'ชื่อ-สกุล',
     position: 'ตำแหน่ง',
-    department: 'ภาควิชา / ศูนย์ / ฝ่าย',
+    department: 'ภาควิชา / สถาบัน / ศูนย์ / ฝ่าย',
     division: 'สายงาน / งาน',
     unit: 'หน่วย',
     phone: 'เบอร์โทรศัพท์',
-    email: 'อีเมล',
+    email: 'อีเมล์',
     subject: 'เรื่อง',
     equipmentType: 'ประเภทของอุปกรณ์คอมพิวเตอร์ที่ต้องการยืม',
     quantity: 'จำนวน',
@@ -65,10 +64,10 @@ const translations = {
     installLocation: 'สถานที่ที่ต้องการติดตั้ง',
     basicSoftware: 'โปรแกรมพื้นฐาน',
     additionalSoftware: 'โปรแกรมเพิ่มเติม',
-    coordinatorName: 'ชื่อผู้ประสานงาน',
-    coordinatorPhone: 'เบอร์โทรผู้ประสานงาน',
+    coordinatorName: 'ผู้ประสานงาน',
+    coordinatorPhone: 'เบอร์โทรศัพท์ผู้ประสานงาน',
     receiver: 'ผู้รับอุปกรณ์',
-    receiveDateTime: 'วันที่และเวลารับอุปกรณ์',
+    receiveDateTime: 'วันและเวลาที่รับอุปกรณ์',
     notes: 'หมายเหตุ',
     attachments: 'แนบไฟล์',
     
@@ -95,7 +94,7 @@ const translations = {
     employeeIdPlaceholder: 'กรอกรหัสพนักงาน',
     fullNamePlaceholder: 'กรอกชื่อ-นามสกุล',
     positionPlaceholder: 'เช่น อาจารย์, นักศึกษา, เจ้าหน้าที่',
-    departmentPlaceholder: 'กรอกภาควิชา/ศูนย์/ฝ่าย',
+    departmentPlaceholder: 'กรอกภาควิชา/สถาบัน/ศูนย์/ฝ่าย',
     divisionPlaceholder: 'กรอกสายงาน/งาน',
     unitPlaceholder: 'กรอกหน่วย (ไม่บังคับ)',
     phonePlaceholder: 'หมายเลขโทรศัพท์',
@@ -131,7 +130,7 @@ const translations = {
     
     // Chat interface
     chatTitle: 'Form Assistant',
-    initialMessage: 'Hello! I\'m a Smart Form Assistant here to help you fill out any form.\nFeel free to chat or ask questions! And when you say something like:\n"I want to borrow a projector next Friday from 1 PM to 3 PM"\nI\'ll fill in the form for you right away. 😊\n\nสวัสดีครับ ผมเป็นผู้ช่วยในการกรอกแบบฟอร์ม\nคุณสามารถพูดคุยหรือสอบถามอะไรก็ได้ครับ 😄\nและถ้าคุณต้องการกรอกฟอร์ม เช่น\n"ขอยืมโปรเจคเตอร์วันศุกร์หน้า 13.00–15.00 ที่ห้องประชุม"\nผมจะช่วยกรอกให้โดยอัตโนมัติครับ',
+    initialMessage: 'Hello! I\'m a Smart Form Assistant here to help you fill out any form.\nFeel free to chat or ask questions!\nAnd when you say something like:\n"I want to borrow a notebook next Friday from 1 PM to 3 PM"\nI\'ll fill the form for you right away.\n\nสวัสดีครับ ผมเป็นผู้ช่วยในการกรอกแบบฟอร์มอัตโนมัติ\nท่านสามารถบอกความต้องการได้เลย เช่น\n"ขอยืมโน๊ตบุ๊คศุกร์หน้า 13.00–15.00 ที่ห้องประชุมชั้น 2"',
     chatPlaceholder: 'Type your message here...',
     
     // Form navigation
@@ -157,7 +156,7 @@ const translations = {
     employeeId: 'Employee ID',
     fullName: 'Full Name',
     position: 'Position',
-    department: 'Department / Center / Division',
+    department: 'Department / Institute / Center / Division',
     division: 'Work Line / Work',
     unit: 'Unit',
     phone: 'Phone Number',
@@ -206,7 +205,7 @@ const translations = {
     employeeIdPlaceholder: 'Enter employee ID',
     fullNamePlaceholder: 'Enter full name',
     positionPlaceholder: 'e.g., Professor, Student, Staff',
-    departmentPlaceholder: 'Enter department/center/division',
+    departmentPlaceholder: 'Enter department/institute/center/division',
     divisionPlaceholder: 'Enter work line/work',
     unitPlaceholder: 'Enter unit (optional)',
     phonePlaceholder: 'Phone number',
