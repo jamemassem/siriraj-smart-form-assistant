@@ -55,18 +55,22 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
     setInputValue('');
 
     try {
-      // Detect language and parse with LLM
+      // Detect language and check if it's an equipment request
       const detectedLanguage = llmService.detectLanguage(currentInput);
-      console.log('Detected language:', detectedLanguage);
+      const isRequest = llmService.isEquipmentRequest(currentInput);
       
-      // Parse the equipment request
-      const parsedData = await llmService.parseEquipmentRequest(currentInput);
+      console.log('Detected language:', detectedLanguage, 'Is request:', isRequest);
       
-      // Send parsed data to parent component
-      onMessageSent(currentInput, parsedData);
+      let parsedData = null;
+      
+      // If it's an equipment request, parse it and update form
+      if (isRequest) {
+        parsedData = await llmService.parseEquipmentRequest(currentInput);
+        onMessageSent(currentInput, parsedData);
+      }
       
       // Generate AI response
-      const aiResponse = llmService.generateResponse(currentInput, detectedLanguage);
+      const aiResponse = llmService.generateResponse(currentInput, detectedLanguage, isRequest);
       
       // Add assistant response
       setTimeout(() => {
@@ -78,7 +82,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
         };
         setMessages(prev => [...prev, assistantMessage]);
         setIsProcessing(false);
-      }, 800);
+      }, 500);
       
     } catch (error) {
       console.error('Error processing message:', error);
@@ -86,8 +90,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
       
       // Fallback response
       const fallbackResponse = language === 'th' 
-        ? "ขออภัยครับ เกิดข้อผิดพลาดในการประมวลผล กรุณาลองใหม่อีกครั้งครับ"
-        : "Sorry, there was an error processing your request. Please try again.";
+        ? "ขออภัยครับ เกิดข้อผิดพลาดในการประมวลผล กรุณาลองใหม่อีกครั้งครับ 🙏"
+        : "Sorry, there was an error processing your request. Please try again. 🙏";
         
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -100,7 +104,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
       handleSendMessage();
     }
   };
@@ -112,6 +117,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
           <MessageCircle className="w-5 h-5 text-blue-600" />
           <h2 className="text-lg font-semibold text-gray-800">{t('chatTitle')}</h2>
         </div>
+        <p className="text-xs text-gray-600 mt-1">
+          {language === 'th' ? '💬 คุยได้ทุกเรื่อง | 📝 ขอยืมอุปกรณ์ได้เลย' : '💬 Chat about anything | 📝 Request equipment easily'}
+        </p>
       </div>
       
       <ScrollArea className="flex-1 p-4">
@@ -128,8 +136,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
                     : 'bg-gray-100 text-gray-800 rounded-bl-sm'
                 }`}
               >
-                <p className="text-sm whitespace-pre-wrap">{message.text}</p>
-                <p className={`text-xs mt-1 ${message.isUser ? 'text-blue-100' : 'text-gray-500'}`}>
+                <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.text}</p>
+                <p className={`text-xs mt-2 ${message.isUser ? 'text-blue-100' : 'text-gray-500'}`}>
                   {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </p>
               </div>
@@ -156,17 +164,23 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
             onChange={(e) => setInputValue(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder={t('chatPlaceholder')}
-            className="flex-1 text-base"
+            className="flex-1 text-base resize-none"
             disabled={isProcessing}
           />
           <Button 
             onClick={handleSendMessage} 
-            className="px-4 bg-blue-600 hover:bg-blue-700"
+            className="px-4 bg-blue-600 hover:bg-blue-700 transition-colors"
             disabled={isProcessing || !inputValue.trim()}
           >
             <Send className="w-4 h-4" />
           </Button>
         </div>
+        <p className="text-xs text-gray-500 mt-2 text-center">
+          {language === 'th' 
+            ? 'Enter = ส่ง | Shift+Enter = บรรทัดใหม่'
+            : 'Enter = Send | Shift+Enter = New line'
+          }
+        </p>
       </div>
     </div>
   );

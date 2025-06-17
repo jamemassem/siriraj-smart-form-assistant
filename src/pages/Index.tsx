@@ -1,24 +1,47 @@
 
 import React, { useState } from 'react';
 import ChatInterface from '@/components/ChatInterface';
-import ComputerEquipmentForm, { ComputerEquipmentFormData } from '@/components/ComputerEquipmentForm';
+import MultiPageForm from '@/components/MultiPageForm';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { LanguageProvider, useLanguage } from '@/contexts/LanguageContext';
+import { ComputerEquipmentFormData } from '@/types/formTypes';
 
 const IndexContent = () => {
   const { t } = useLanguage();
   const [formData, setFormData] = useState<ComputerEquipmentFormData>({
-    borrowerName: '',
+    // Page 1 - Recorder Information
+    employeeId: '',
+    fullName: '',
     position: '',
     department: '',
+    division: '',
+    unit: '',
     phone: '',
     email: '',
+    
+    // Document Details
+    subject: '',
     equipmentType: '',
-    equipmentDetails: '',
     quantity: '1',
-    borrowDate: '',
-    returnDate: '',
+    equipmentDetails: '',
     purpose: '',
+    
+    // Time Details
+    startDate: '',
+    startTime: '',
+    endDate: '',
+    endTime: '',
+    
+    // Page 2 - Installation and Coordination
+    installLocation: '',
+    basicSoftware: [],
+    additionalSoftware: 'no',
+    additionalSoftwareDetails: '',
+    coordinatorName: '',
+    coordinatorPhone: '',
+    receiver: '',
+    receiveDateTime: '',
+    notes: '',
     attachments: []
   });
 
@@ -26,17 +49,19 @@ const IndexContent = () => {
     console.log('Processing message:', message);
     console.log('Parsed data:', parsedData);
     
-    // Update form data with parsed information
-    const updatedFormData = { ...formData };
-    
-    Object.keys(parsedData).forEach(key => {
-      const value = parsedData[key];
-      if (value && key in updatedFormData) {
-        updatedFormData[key as keyof ComputerEquipmentFormData] = value;
-      }
-    });
-    
-    setFormData(updatedFormData);
+    if (parsedData) {
+      // Update form data with parsed information
+      const updatedFormData = { ...formData };
+      
+      Object.keys(parsedData).forEach(key => {
+        const value = parsedData[key];
+        if (value !== undefined && value !== '' && key in updatedFormData) {
+          updatedFormData[key as keyof ComputerEquipmentFormData] = value;
+        }
+      });
+      
+      setFormData(updatedFormData);
+    }
   };
 
   const handleFormDataChange = (newFormData: ComputerEquipmentFormData) => {
@@ -52,6 +77,9 @@ const IndexContent = () => {
             <h1 className="text-3xl font-bold text-gray-800 text-center">
               {t('title')}
             </h1>
+            <p className="text-center text-gray-600 mt-2 text-sm">
+              คณะแพทยศาสตร์ศิริราชพยาบาล มหาวิทยาลัยมหิดล
+            </p>
           </div>
           <div className="ml-4">
             <LanguageSwitcher />
@@ -65,9 +93,9 @@ const IndexContent = () => {
             <ChatInterface onMessageSent={handleMessageSent} />
           </div>
 
-          {/* Right Panel - Computer Equipment Form */}
+          {/* Right Panel - Multi-Page Form */}
           <div className="order-1 lg:order-2">
-            <ComputerEquipmentForm 
+            <MultiPageForm 
               formData={formData} 
               onFormDataChange={handleFormDataChange}
             />
