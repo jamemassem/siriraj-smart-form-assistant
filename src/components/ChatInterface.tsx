@@ -9,9 +9,6 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { openRouterService } from '@/services/openRouter';
 import { toast } from '@/hooks/use-toast';
 
-// Import speech recognition types
-/// <reference path="../types/speech.d.ts" />
-
 interface Message {
   id: string;
   text: string;
@@ -29,30 +26,32 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
   const [inputValue, setInputValue] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [recognition, setRecognition] = useState<any>(null);
+  const [showMic, setShowMic] = useState(true);
   const [apiKey, setApiKey] = useState('');
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const apiKeyInputRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<any>(null);
 
   // Check if speech recognition is available
-  const isSpeechAvailable = typeof window !== 'undefined' && 
-    ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window);
+  const hasSpeechRecognition = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 
   useEffect(() => {
-    // Initialize with welcome message
+    // Initialize with welcome message (professional tone, no emojis)
     const welcomeMessage: Message = {
       id: '1',
       text: language === 'th' 
-        ? 'ระบบช่วยกรอกแบบฟอร์มอัตโนมัติ\nกรุณาพิมพ์หรือบอกความต้องการ เช่น\n"ขอยืมโปรเจคเตอร์วันศุกร์หน้า เวลา 13:00-15:00 ที่ห้องประชุมชั้น 2"\n\nระบบจะกรอกแบบฟอร์มให้โดยอัตโนมัติ'
-        : 'Smart Form Assistant\nPlease type or tell me your request, for example:\n"I want to borrow a projector next Friday from 1 PM to 3 PM in meeting room on 2nd floor"\n\nThe system will automatically fill the form for you.',
+        ? 'สวัสดีครับ ระบบช่วยกรอกแบบฟอร์มอัตโนมัติ โปรดแจ้งความประสงค์ของท่าน เช่น\n"ขอยืมโปรเจคเตอร์วันศุกร์หน้า เวลา 13:00-15:00 ที่ห้องประชุมชั้น 2"\n\nระบบจะกรอกแบบฟอร์มให้โดยอัตโนมัติ'
+        : 'Hello! Smart Form Assistant. Please tell me your request, for example:\n"I want to borrow a projector next Friday from 1 PM to 3 PM in meeting room on 2nd floor"\n\nThe system will automatically fill the form for you.',
       isUser: false,
       timestamp: new Date()
     };
     setMessages([welcomeMessage]);
 
     // Initialize Speech Recognition if available
-    if (isSpeechAvailable) {
-      const SpeechRecognitionClass = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!hasSpeechRecognition) {
+      setShowMic(false);
+    } else {
+      const SpeechRecognitionClass = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (SpeechRecognitionClass) {
         const recognitionInstance = new SpeechRecognitionClass();
         recognitionInstance.continuous = false;
@@ -67,28 +66,33 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
         
         recognitionInstance.onerror = () => {
           setIsListening(false);
+          toast({
+            title: language === 'th' ? 'ข้อผิดพลาดการรับเสียง' : 'Voice Recognition Error',
+            description: language === 'th' ? 'ไม่สามารถรับเสียงได้ กรุณาลองใหม่' : 'Could not recognize voice. Please try again.',
+            variant: "destructive"
+          });
         };
         
         recognitionInstance.onend = () => {
           setIsListening(false);
         };
         
-        setRecognition(recognitionInstance);
+        recognitionRef.current = recognitionInstance;
       }
     }
-  }, [language, isSpeechAvailable]);
+  }, [language, hasSpeechRecognition]);
 
   const startListening = () => {
-    if (recognition && !isListening && isSpeechAvailable) {
-      recognition.lang = language === 'th' ? 'th-TH' : 'en-US';
-      recognition.start();
+    if (recognitionRef.current && !isListening && hasSpeechRecognition) {
+      recognitionRef.current.lang = language === 'th' ? 'th-TH' : 'en-US';
+      recognitionRef.current.start();
       setIsListening(true);
     }
   };
 
   const stopListening = () => {
-    if (recognition && isListening) {
-      recognition.stop();
+    if (recognitionRef.current && isListening) {
+      recognitionRef.current.stop();
       setIsListening(false);
     }
   };
@@ -175,8 +179,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
       setIsProcessing(false);
       
       const fallbackResponse = language === 'th' 
-        ? "ขออภัย เกิดข้อผิดพลาดในการประมวลผล กรุณาลองใหม่อีกครั้ง"
-        : "Sorry, there was an error processing your request. Please try again.";
+        ? "ขออภัย เกิดข้อผิดพลาดในการเชื่อมต่อ LLM กรุณาลองใหม่อีกครั้ง"
+        : "Sorry, there was an error connecting to LLM. Please try again.";
         
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -185,6 +189,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);
+      
+      toast({
+        title: language === 'th' ? 'ข้อผิดพลาด' : 'Error',
+        description: language === 'th' ? 'เกิดข้อผิดพลาดในการเชื่อมต่อ LLM' : 'Error connecting to LLM',
+        variant: "destructive"
+      });
     }
   };
 
@@ -292,7 +302,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
               className="flex-1 text-base resize-none"
               disabled={isProcessing}
             />
-            {isSpeechAvailable && (
+            {showMic && hasSpeechRecognition && (
               <Button
                 onClick={isListening ? stopListening : startListening}
                 className={`px-3 transition-colors ${
@@ -318,7 +328,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
               ? 'Enter = ส่ง | Shift+Enter = บรรทัดใหม่'
               : 'Enter = Send | Shift+Enter = New line'
             }
-            {isSpeechAvailable && (language === 'th' ? ' | ไมค์ = เสียง' : ' | Mic = Voice')}
+            {showMic && hasSpeechRecognition && (language === 'th' ? ' | ไมค์ = เสียง' : ' | Mic = Voice')}
           </p>
         </div>
       </CardContent>

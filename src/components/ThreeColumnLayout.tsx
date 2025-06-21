@@ -99,33 +99,35 @@ const ThreeColumnLayout: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* Main Content - Responsive Grid */}
       <div className="max-w-7xl mx-auto p-2 md:p-4">
-        {/* Desktop Layout: 3 columns >= 1024px, 2 columns 768-1023px */}
-        <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 h-[calc(100vh-140px)]">
-          {/* Chat Interface */}
-          <div className="lg:col-span-1 md:col-span-2 lg:col-span-1">
-            <ChatInterface onMessageSent={handleMessageSent} />
-          </div>
+        {/* Desktop: 3 columns ≥1024px, Tablet: 2 columns 768-1023px */}
+        <div className="hidden md:block">
+          <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-4 h-[calc(100vh-140px)]">
+            {/* Chat Interface - Full width on tablet, 1/3 on desktop */}
+            <div className="lg:col-span-1 md:col-span-2 lg:col-span-1">
+              <ChatInterface onMessageSent={handleMessageSent} />
+            </div>
 
-          {/* Form Part 1 */}
-          <div className="lg:col-span-1 md:col-span-1">
-            <ComputerEquipmentFormPart1 
-              formData={formData} 
-              onFormDataChange={handleFormDataChange}
-            />
-          </div>
+            {/* Form Part 1 - 1/2 on tablet, 1/3 on desktop */}
+            <div className="lg:col-span-1 md:col-span-1">
+              <ComputerEquipmentFormPart1 
+                formData={formData} 
+                onFormDataChange={handleFormDataChange}
+              />
+            </div>
 
-          {/* Form Part 2 */}
-          <div className="lg:col-span-1 md:col-span-1">
-            <ComputerEquipmentFormPart2 
-              formData={formData} 
-              onFormDataChange={handleFormDataChange}
-            />
+            {/* Form Part 2 - 1/2 on tablet, 1/3 on desktop */}
+            <div className="lg:col-span-1 md:col-span-1">
+              <ComputerEquipmentFormPart2 
+                formData={formData} 
+                onFormDataChange={handleFormDataChange}
+              />
+            </div>
           </div>
         </div>
 
-        {/* Mobile Layout: 1 column < 768px */}
+        {/* Mobile Layout: 1 column <768px */}
         <div className="md:hidden">
           {/* Mobile Navigation */}
           <div className="mb-4">
@@ -154,7 +156,7 @@ const ThreeColumnLayout: React.FC = () => {
             {!isMobileMenuOpen ? (
               <ChatInterface onMessageSent={handleMessageSent} />
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-4 overflow-y-auto h-full">
                 <ComputerEquipmentFormPart1 
                   formData={formData} 
                   onFormDataChange={handleFormDataChange}

@@ -41,11 +41,12 @@ class OpenRouterService {
         headers: {
           'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
+          'User-Agent': 'SmartFormAssistant/1.0'
         },
         body: JSON.stringify({
           model: 'cohere/command-r-plus',
           messages,
-          temperature: 0.7,
+          temperature: 0.2,
           max_tokens: 1000,
         } as OpenRouterRequest),
         signal: controller.signal,
@@ -189,3 +190,7 @@ For general conversation, respond politely and helpfully.`;
 }
 
 export const openRouterService = new OpenRouterService();
+
+export const chatOpenRouter = async (messages: OpenRouterMessage[]): Promise<string> => {
+  return await openRouterService.chat(messages);
+};

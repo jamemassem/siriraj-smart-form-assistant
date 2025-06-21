@@ -51,17 +51,22 @@ const ComputerEquipmentFormPart2: React.FC<ComputerEquipmentFormPart2Props> = ({
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
-    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    const allowedTypes = [
+      'application/pdf',
+      'image/jpeg',
+      'image/png',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
     const maxSize = 10 * 1024 * 1024; // 10MB
     
     const validFiles: File[] = [];
     const errors: string[] = [];
     
     files.forEach(file => {
-      if (!allowedTypes.includes(file.type)) {
-        errors.push(`ไฟล์ ${file.name} ประเภทไม่ถูกต้อง`);
-      } else if (file.size > maxSize) {
+      if (file.size > maxSize) {
         errors.push(`ไฟล์ ${file.name} มีขนาดเกิน 10 MB`);
+      } else if (!allowedTypes.includes(file.type)) {
+        errors.push(`ไฟล์ ${file.name} ประเภทไม่ถูกต้อง`);
       } else {
         validFiles.push(file);
       }
@@ -70,7 +75,7 @@ const ComputerEquipmentFormPart2: React.FC<ComputerEquipmentFormPart2Props> = ({
     if (errors.length > 0) {
       toast({
         title: 'ไฟล์ไม่ถูกต้อง',
-        description: errors.join('\n'),
+        description: 'ไฟล์ต้องเป็น PDF/JPG/PNG/DOCX และไม่เกิน 10 MB',
         variant: "destructive"
       });
     }
@@ -336,7 +341,7 @@ const ComputerEquipmentFormPart2: React.FC<ComputerEquipmentFormPart2Props> = ({
             <div className="bg-[#29A9EF] text-white p-3 font-bold rounded">
               <h3 className="flex items-center gap-2">
                 <MessageSquare className="w-4 h-4" />
-                หิมายเหตุและเอกสารแนบ
+                หมายเหตุและเอกสารแนบ
               </h3>
             </div>
             
