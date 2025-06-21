@@ -5,7 +5,6 @@ env.allowRemoteModels = true;
 env.allowLocalModels = true;
 
 class LLMService {
-  private classifier: any = null;
   private initialized = false;
 
   async initialize() {
@@ -13,26 +12,11 @@ class LLMService {
     
     try {
       console.log('Initializing LLM service...');
-      // Using a lightweight multilingual model that works well for Thai and English
-      this.classifier = await pipeline(
-        'text-classification',
-        'Xenova/multilingual-MiniLM-L12-v2',
-        { device: 'webgpu' }
-      );
+      // Simple rule-based initialization instead of external models
       this.initialized = true;
       console.log('LLM service initialized successfully');
     } catch (error) {
-      console.warn('WebGPU not available, falling back to CPU');
-      try {
-        this.classifier = await pipeline(
-          'text-classification',
-          'Xenova/multilingual-MiniLM-L12-v2'
-        );
-        this.initialized = true;
-        console.log('LLM service initialized with CPU');
-      } catch (cpuError) {
-        console.error('Failed to initialize LLM service:', cpuError);
-      }
+      console.error('Failed to initialize LLM service:', error);
     }
   }
 
