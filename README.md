@@ -1,3 +1,4 @@
+
 # Welcome to your Lovable project
 
 ## Project info
@@ -49,6 +50,29 @@ npm run dev
 - Select the "Codespaces" tab.
 - Click on "New codespace" to launch a new Codespace environment.
 - Edit files directly within the Codespace and commit and push your changes once you're done.
+
+## Development Setup
+
+### วิธีตั้ง .env ใน Local Development
+
+1. สร้างไฟล์ `.env` ใน root directory
+2. เพิ่ม OpenRouter API Key:
+   ```
+   VITE_OPENROUTER_API_KEY=sk-or-v1-xxxxxxxxxxxxxxxxx
+   ```
+
+### วิธีสร้าง Domain-scoped key บน openrouter.ai
+
+1. ไปที่ [OpenRouter.ai](https://openrouter.ai/)
+2. สร้างบัญชีและเข้าสู่ระบบ
+3. ไปที่ Settings > API Keys
+4. สร้าง API Key ใหม่ พร้อมกำหนด domain restrictions
+5. คัดลอก key มาใส่ในไฟล์ .env
+
+### โหมด Development vs Production
+
+- **Development**: หากไม่มี API key ใน .env ระบบจะแสดง modal ให้กรอก key และเก็บใน localStorage
+- **Production**: ใช้ API key จาก environment variables เท่านั้น ไม่แสดง modal
 
 ## What technologies are used for this project?
 

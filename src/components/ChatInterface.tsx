@@ -1,13 +1,14 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, MessageCircle, Mic, MicOff, Settings } from 'lucide-react';
+import { Send, MessageCircle, Mic, MicOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { openRouterService } from '@/services/openRouter';
+import { openRouterService, chatOpenRouter } from '@/services/openRouter';
 import { toast } from '@/hooks/use-toast';
+import ApiKeyModal from '@/components/ApiKeyModal';
 
 interface Message {
   id: string;
@@ -21,16 +22,18 @@ interface ChatInterfaceProps {
 }
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [showMic, setShowMic] = useState(true);
-  const [apiKey, setApiKey] = useState('');
-  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
-  const apiKeyInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
+
+  // Check if API key is needed (development only)
+  const needKey = !import.meta.env.VITE_OPENROUTER_API_KEY && 
+                  !localStorage.getItem('or_key') &&
+                  process.env.NODE_ENV !== 'production';
 
   // Check if speech recognition is available
   const hasSpeechRecognition = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
@@ -97,29 +100,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
     }
   };
 
-  const handleApiKeySubmit = () => {
-    if (apiKey.trim()) {
-      openRouterService.setApiKey(apiKey);
-      setShowApiKeyInput(false);
-      toast({
-        title: language === 'th' ? 'ตั้งค่า API Key สำเร็จ' : 'API Key Set Successfully',
-        description: language === 'th' ? 'สามารถใช้งานระบบได้แล้ว' : 'System is now ready to use',
-      });
-    }
-  };
-
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isProcessing) return;
-
-    if (!apiKey) {
-      setShowApiKeyInput(true);
-      toast({
-        title: language === 'th' ? 'ต้องการ API Key' : 'API Key Required',
-        description: language === 'th' ? 'กรุณากรอก OpenRouter API Key เพื่อใช้งาน' : 'Please enter OpenRouter API Key to continue',
-        variant: "destructive"
-      });
-      return;
-    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -205,134 +187,102 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
     }
   };
 
-  if (showApiKeyInput) {
-    return (
+  return (
+    <>
+      {/* Development API Key Modal */}
+      {needKey && (
+        <ApiKeyModal onSave={(apiKey) => localStorage.setItem('or_key', apiKey)} />
+      )}
+
       <Card className="h-full">
         <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
           <CardTitle className="flex items-center gap-2 text-gray-800">
-            <Settings className="w-5 h-5 text-blue-600" />
-            การตั้งค่า API Key
+            <MessageCircle className="w-5 h-5 text-blue-600" />
+            ระบบช่วยกรอกแบบฟอร์มอัตโนมัติ
           </CardTitle>
+          <p className="text-xs text-gray-600 mt-1">
+            {language === 'th' ? 'สนทนาได้ | ขอยืมอุปกรณ์ได้ | รองรับเสียง' : 'Chat available | Equipment requests | Voice supported'}
+          </p>
         </CardHeader>
-        <CardContent className="p-6">
-          <div className="space-y-4">
-            <p className="text-sm text-gray-600">
-              {language === 'th' 
-                ? 'กรุณากรอก OpenRouter API Key เพื่อใช้งานระบบ'
-                : 'Please enter your OpenRouter API Key to use the system'
-              }
-            </p>
-            <Input
-              ref={apiKeyInputRef}
-              type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="sk-or-v1-..."
-              onKeyPress={(e) => e.key === 'Enter' && handleApiKeySubmit()}
-            />
+        
+        <CardContent className="p-0 flex flex-col h-full">
+          <ScrollArea className="flex-1 p-4">
+            <div className="space-y-4">
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`max-w-[85%] p-3 rounded-lg ${
+                      message.isUser
+                        ? 'bg-blue-600 text-white rounded-br-sm'
+                        : 'bg-gray-100 text-gray-800 rounded-bl-sm'
+                    }`}
+                  >
+                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.text}</p>
+                    <p className={`text-xs mt-2 ${message.isUser ? 'text-blue-100' : 'text-gray-500'}`}>
+                      {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              {isProcessing && (
+                <div className="flex justify-start">
+                  <div className="bg-gray-100 text-gray-800 rounded-lg rounded-bl-sm p-3">
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+          
+          <div className="p-4 border-t bg-gray-50">
             <div className="flex gap-2">
-              <Button onClick={handleApiKeySubmit} className="flex-1">
-                {language === 'th' ? 'ยืนยัน' : 'Confirm'}
-              </Button>
-              <Button variant="outline" onClick={() => setShowApiKeyInput(false)}>
-                {language === 'th' ? 'ยกเลิก' : 'Cancel'}
+              <Input
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder={language === 'th' ? 'พิมพ์ข้อความหรือใช้เสียง...' : 'Type a message or use voice...'}
+                className="flex-1 text-base resize-none"
+                disabled={isProcessing}
+              />
+              {showMic && hasSpeechRecognition && (
+                <Button
+                  onClick={isListening ? stopListening : startListening}
+                  className={`px-3 transition-colors ${
+                    isListening 
+                      ? 'bg-red-600 hover:bg-red-700' 
+                      : 'bg-green-600 hover:bg-green-700'
+                  }`}
+                  disabled={isProcessing}
+                >
+                  {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                </Button>
+              )}
+              <Button 
+                onClick={handleSendMessage} 
+                className="px-4 bg-blue-600 hover:bg-blue-700 transition-colors"
+                disabled={isProcessing || !inputValue.trim()}
+              >
+                <Send className="w-4 h-4" />
               </Button>
             </div>
+            <p className="text-xs text-gray-500 mt-2 text-center">
+              {language === 'th' 
+                ? 'Enter = ส่ง | Shift+Enter = บรรทัดใหม่'
+                : 'Enter = Send | Shift+Enter = New line'
+              }
+              {showMic && hasSpeechRecognition && (language === 'th' ? ' | ไมค์ = เสียง' : ' | Mic = Voice')}
+            </p>
           </div>
         </CardContent>
       </Card>
-    );
-  }
-
-  return (
-    <Card className="h-full">
-      <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
-        <CardTitle className="flex items-center gap-2 text-gray-800">
-          <MessageCircle className="w-5 h-5 text-blue-600" />
-          ระบบช่วยกรอกแบบฟอร์มอัตโนมัติ
-        </CardTitle>
-        <p className="text-xs text-gray-600 mt-1">
-          {language === 'th' ? 'สนทนาได้ | ขอยืมอุปกรณ์ได้ | รองรับเสียง' : 'Chat available | Equipment requests | Voice supported'}
-        </p>
-      </CardHeader>
-      
-      <CardContent className="p-0 flex flex-col h-full">
-        <ScrollArea className="flex-1 p-4">
-          <div className="space-y-4">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-[85%] p-3 rounded-lg ${
-                    message.isUser
-                      ? 'bg-blue-600 text-white rounded-br-sm'
-                      : 'bg-gray-100 text-gray-800 rounded-bl-sm'
-                  }`}
-                >
-                  <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.text}</p>
-                  <p className={`text-xs mt-2 ${message.isUser ? 'text-blue-100' : 'text-gray-500'}`}>
-                    {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </p>
-                </div>
-              </div>
-            ))}
-            {isProcessing && (
-              <div className="flex justify-start">
-                <div className="bg-gray-100 text-gray-800 rounded-lg rounded-bl-sm p-3">
-                  <div className="flex items-center gap-1">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </ScrollArea>
-        
-        <div className="p-4 border-t bg-gray-50">
-          <div className="flex gap-2">
-            <Input
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder={language === 'th' ? 'พิมพ์ข้อความหรือใช้เสียง...' : 'Type a message or use voice...'}
-              className="flex-1 text-base resize-none"
-              disabled={isProcessing}
-            />
-            {showMic && hasSpeechRecognition && (
-              <Button
-                onClick={isListening ? stopListening : startListening}
-                className={`px-3 transition-colors ${
-                  isListening 
-                    ? 'bg-red-600 hover:bg-red-700' 
-                    : 'bg-green-600 hover:bg-green-700'
-                }`}
-                disabled={isProcessing}
-              >
-                {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-              </Button>
-            )}
-            <Button 
-              onClick={handleSendMessage} 
-              className="px-4 bg-blue-600 hover:bg-blue-700 transition-colors"
-              disabled={isProcessing || !inputValue.trim()}
-            >
-              <Send className="w-4 h-4" />
-            </Button>
-          </div>
-          <p className="text-xs text-gray-500 mt-2 text-center">
-            {language === 'th' 
-              ? 'Enter = ส่ง | Shift+Enter = บรรทัดใหม่'
-              : 'Enter = Send | Shift+Enter = New line'
-            }
-            {showMic && hasSpeechRecognition && (language === 'th' ? ' | ไมค์ = เสียง' : ' | Mic = Voice')}
-          </p>
-        </div>
-      </CardContent>
-    </Card>
+    </>
   );
 };
 

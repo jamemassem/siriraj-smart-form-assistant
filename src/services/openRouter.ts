@@ -1,4 +1,3 @@
-
 interface OpenRouterMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
@@ -19,54 +18,65 @@ interface OpenRouterResponse {
   }>;
 }
 
+const getApiKey = (): string | null => {
+  return localStorage.getItem('or_key') || import.meta.env.VITE_OPENROUTER_API_KEY || null;
+};
+
+export async function chatOpenRouter(messages: OpenRouterMessage[]): Promise<string> {
+  const API_KEY = getApiKey();
+  
+  if (!API_KEY) {
+    throw new Error('Missing OpenRouter API key');
+  }
+
+  const ctrl = new AbortController();
+  const timeoutId = setTimeout(() => ctrl.abort(), 20000);
+
+  try {
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${API_KEY}`,
+        'Content-Type': 'application/json',
+        'User-Agent': 'SmartFormAssistant/1.0'
+      },
+      body: JSON.stringify({
+        model: 'cohere/command-r-plus',
+        messages,
+        temperature: 0.2,
+        max_tokens: 1000,
+      } as OpenRouterRequest),
+      signal: ctrl.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      throw new Error(`OpenRouter API error: ${res.status}`);
+    }
+
+    const data: OpenRouterResponse = await res.json();
+    return data.choices[0]?.message?.content || 'ไม่สามารถประมวลผลได้ในขณะนี้';
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('คำขอหมดเวลา กรุณาลองใหม่อีกครั้ง');
+    }
+    throw error;
+  }
+}
+
 class OpenRouterService {
-  private apiKey: string = '';
-  private baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
+  private getApiKey(): string | null {
+    return getApiKey();
+  }
 
   setApiKey(apiKey: string) {
-    this.apiKey = apiKey;
+    localStorage.setItem('or_key', apiKey);
   }
 
   async chat(messages: OpenRouterMessage[], timeout: number = 20000): Promise<string> {
-    if (!this.apiKey) {
-      throw new Error('API key not set');
-    }
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-    try {
-      const response = await fetch(this.baseUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json',
-          'User-Agent': 'SmartFormAssistant/1.0'
-        },
-        body: JSON.stringify({
-          model: 'cohere/command-r-plus',
-          messages,
-          temperature: 0.2,
-          max_tokens: 1000,
-        } as OpenRouterRequest),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`API request failed: ${response.status}`);
-      }
-
-      const data: OpenRouterResponse = await response.json();
-      return data.choices[0]?.message?.content || 'ไม่สามารถประมวลผลได้ในขณะนี้';
-    } catch (error) {
-      clearTimeout(timeoutId);
-      if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error('คำขอหมดเวลา กรุณาลองใหม่อีกครั้ง');
-      }
-      throw error;
-    }
+    return chatOpenRouter(messages);
   }
 
   async parseEquipmentRequest(text: string, language: 'th' | 'en'): Promise<any> {
