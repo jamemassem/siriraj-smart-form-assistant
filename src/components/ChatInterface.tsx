@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Send, MessageCircle, Mic, MicOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -24,7 +25,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
   const [inputValue, setInputValue] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
+  const [recognition, setRecognition] = useState<any>(null);
 
   useEffect(() => {
     // Initialize with welcome message
