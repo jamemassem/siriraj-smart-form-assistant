@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, MessageCircle, Mic, MicOff, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -32,15 +31,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
   const apiKeyInputRef = useRef<HTMLInputElement>(null);
 
   // Check if speech recognition is available
-  const isSpeechAvailable = 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
+  const isSpeechAvailable = typeof window !== 'undefined' && 
+    ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window);
 
   useEffect(() => {
     // Initialize with welcome message
     const welcomeMessage: Message = {
       id: '1',
       text: language === 'th' 
-        ? 'สวัสดีครับ ระบบช่วยกรอกแบบฟอร์มอัตโนมัติ\nกรุณาพิมพ์หรือบอกความต้องการ เช่น\n"ขอยืมโปรเจคเตอร์วันศุกร์หน้า เวลา 13:00-15:00 ที่ห้องประชุมชั้น 2"\n\nระบบจะกรอกแบบฟอร์มให้โดยอัตโนมัติ'
-        : 'Hello. Smart Form Assistant.\nPlease type or tell me your request, for example:\n"I want to borrow a projector next Friday from 1 PM to 3 PM in meeting room on 2nd floor"\n\nThe system will automatically fill the form for you.',
+        ? 'ระบบช่วยกรอกแบบฟอร์มอัตโนมัติ\nกรุณาพิมพ์หรือบอกความต้องการ เช่น\n"ขอยืมโปรเจคเตอร์วันศุกร์หน้า เวลา 13:00-15:00 ที่ห้องประชุมชั้น 2"\n\nระบบจะกรอกแบบฟอร์มให้โดยอัตโนมัติ'
+        : 'Smart Form Assistant\nPlease type or tell me your request, for example:\n"I want to borrow a projector next Friday from 1 PM to 3 PM in meeting room on 2nd floor"\n\nThe system will automatically fill the form for you.',
       isUser: false,
       timestamp: new Date()
     };
@@ -49,26 +49,28 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
     // Initialize Speech Recognition if available
     if (isSpeechAvailable) {
       const SpeechRecognitionClass = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      const recognitionInstance = new SpeechRecognitionClass();
-      recognitionInstance.continuous = false;
-      recognitionInstance.interimResults = false;
-      recognitionInstance.lang = language === 'th' ? 'th-TH' : 'en-US';
-      
-      recognitionInstance.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        setInputValue(transcript);
-        setIsListening(false);
-      };
-      
-      recognitionInstance.onerror = () => {
-        setIsListening(false);
-      };
-      
-      recognitionInstance.onend = () => {
-        setIsListening(false);
-      };
-      
-      setRecognition(recognitionInstance);
+      if (SpeechRecognitionClass) {
+        const recognitionInstance = new SpeechRecognitionClass() as SpeechRecognition;
+        recognitionInstance.continuous = false;
+        recognitionInstance.interimResults = false;
+        recognitionInstance.lang = language === 'th' ? 'th-TH' : 'en-US';
+        
+        recognitionInstance.onresult = (event: SpeechRecognitionEvent) => {
+          const transcript = event.results[0][0].transcript;
+          setInputValue(transcript);
+          setIsListening(false);
+        };
+        
+        recognitionInstance.onerror = () => {
+          setIsListening(false);
+        };
+        
+        recognitionInstance.onend = () => {
+          setIsListening(false);
+        };
+        
+        setRecognition(recognitionInstance);
+      }
     }
   }, [language, isSpeechAvailable]);
 
