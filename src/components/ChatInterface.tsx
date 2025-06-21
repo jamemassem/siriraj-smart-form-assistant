@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, MessageCircle, Mic, MicOff, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { openRouterService } from '@/services/openRouter';
 import { toast } from '@/hooks/use-toast';
+
+// Import speech recognition types
+/// <reference path="../types/speech.d.ts" />
 
 interface Message {
   id: string;
@@ -25,7 +29,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
   const [inputValue, setInputValue] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
+  const [recognition, setRecognition] = useState<any>(null);
   const [apiKey, setApiKey] = useState('');
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const apiKeyInputRef = useRef<HTMLInputElement>(null);
@@ -50,12 +54,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
     if (isSpeechAvailable) {
       const SpeechRecognitionClass = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       if (SpeechRecognitionClass) {
-        const recognitionInstance = new SpeechRecognitionClass() as SpeechRecognition;
+        const recognitionInstance = new SpeechRecognitionClass();
         recognitionInstance.continuous = false;
         recognitionInstance.interimResults = false;
         recognitionInstance.lang = language === 'th' ? 'th-TH' : 'en-US';
         
-        recognitionInstance.onresult = (event: SpeechRecognitionEvent) => {
+        recognitionInstance.onresult = (event: any) => {
           const transcript = event.results[0][0].transcript;
           setInputValue(transcript);
           setIsListening(false);
