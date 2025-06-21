@@ -1,12 +1,13 @@
 
-import React, { useState, useEffect } from 'react';
-import { Send, MessageCircle, Mic, MicOff } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Send, MessageCircle, Mic, MicOff, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { llmService } from '@/services/llmService';
+import { openRouterService } from '@/services/openRouter';
+import { toast } from '@/hooks/use-toast';
 
 interface Message {
   id: string;
@@ -25,25 +26,28 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
   const [inputValue, setInputValue] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [recognition, setRecognition] = useState<any>(null);
+  const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
+  const [apiKey, setApiKey] = useState('');
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+  const apiKeyInputRef = useRef<HTMLInputElement>(null);
+
+  // Check if speech recognition is available
+  const isSpeechAvailable = 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
 
   useEffect(() => {
     // Initialize with welcome message
     const welcomeMessage: Message = {
       id: '1',
       text: language === 'th' 
-        ? 'สวัสดีครับ ผมเป็นผู้ช่วยในการกรอกแบบฟอร์มอัตโนมัติ\nพิมพ์หรือพูดได้เลย เช่น\n"ขอยืมโปรเจคเตอร์ศุกร์หน้า 13:00–15:00 ที่ห้องประชุมชั้น 2"\n\nHello! I\'m a Smart Form Assistant.\nJust tell me something like:\n"I want to borrow a projector next Friday from 1 PM to 3 PM."\nI\'ll fill the form automatically.'
-        : 'Hello! I\'m a Smart Form Assistant.\nJust tell me something like:\n"I want to borrow a projector next Friday from 1 PM to 3 PM."\nI\'ll fill the form automatically.\n\nสวัสดีครับ ผมเป็นผู้ช่วยในการกรอกแบบฟอร์มอัตโนมัติ\nพิมพ์หรือพูดได้เลย เช่น\n"ขอยืมโปรเจคเตอร์ศุกร์หน้า 13:00–15:00 ที่ห้องประชุมชั้น 2"',
+        ? 'สวัสดีครับ ระบบช่วยกรอกแบบฟอร์มอัตโนมัติ\nกรุณาพิมพ์หรือบอกความต้องการ เช่น\n"ขอยืมโปรเจคเตอร์วันศุกร์หน้า เวลา 13:00-15:00 ที่ห้องประชุมชั้น 2"\n\nระบบจะกรอกแบบฟอร์มให้โดยอัตโนมัติ'
+        : 'Hello. Smart Form Assistant.\nPlease type or tell me your request, for example:\n"I want to borrow a projector next Friday from 1 PM to 3 PM in meeting room on 2nd floor"\n\nThe system will automatically fill the form for you.',
       isUser: false,
       timestamp: new Date()
     };
     setMessages([welcomeMessage]);
-    
-    // Initialize LLM service
-    llmService.initialize();
 
-    // Initialize Speech Recognition
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    // Initialize Speech Recognition if available
+    if (isSpeechAvailable) {
       const SpeechRecognitionClass = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       const recognitionInstance = new SpeechRecognitionClass();
       recognitionInstance.continuous = false;
@@ -66,10 +70,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
       
       setRecognition(recognitionInstance);
     }
-  }, [language]);
+  }, [language, isSpeechAvailable]);
 
   const startListening = () => {
-    if (recognition && !isListening) {
+    if (recognition && !isListening && isSpeechAvailable) {
       recognition.lang = language === 'th' ? 'th-TH' : 'en-US';
       recognition.start();
       setIsListening(true);
@@ -83,8 +87,29 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
     }
   };
 
+  const handleApiKeySubmit = () => {
+    if (apiKey.trim()) {
+      openRouterService.setApiKey(apiKey);
+      setShowApiKeyInput(false);
+      toast({
+        title: language === 'th' ? 'ตั้งค่า API Key สำเร็จ' : 'API Key Set Successfully',
+        description: language === 'th' ? 'สามารถใช้งานระบบได้แล้ว' : 'System is now ready to use',
+      });
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isProcessing) return;
+
+    if (!apiKey) {
+      setShowApiKeyInput(true);
+      toast({
+        title: language === 'th' ? 'ต้องการ API Key' : 'API Key Required',
+        description: language === 'th' ? 'กรุณากรอก OpenRouter API Key เพื่อใช้งาน' : 'Please enter OpenRouter API Key to continue',
+        variant: "destructive"
+      });
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -100,21 +125,18 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
     setInputValue('');
 
     try {
-      // Detect language and check if it's an equipment request
-      const detectedLanguage = llmService.detectLanguage(currentInput);
-      const isRequest = llmService.isEquipmentRequest(currentInput);
+      const detectedLanguage = openRouterService.detectLanguage(currentInput);
+      const isRequest = openRouterService.isEquipmentRequest(currentInput);
       
       console.log('Detected language:', detectedLanguage, 'Is request:', isRequest);
       
       let parsedData = null;
       let responseMessage = '';
       
-      // If it's an equipment request, parse it and update form
       if (isRequest) {
-        parsedData = await llmService.parseEquipmentRequest(currentInput);
+        parsedData = await openRouterService.parseEquipmentRequest(currentInput, detectedLanguage);
         onMessageSent(currentInput, parsedData);
         
-        // Check for missing required fields and generate appropriate response
         const missingFields = [];
         if (!parsedData.purpose) missingFields.push(detectedLanguage === 'th' ? 'วัตถุประสงค์ในการยืม' : 'purpose');
         if (!parsedData.startDate || !parsedData.startTime) missingFields.push(detectedLanguage === 'th' ? 'วันและเวลาที่ต้องการใช้งาน' : 'start date/time');
@@ -122,17 +144,15 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
         
         if (missingFields.length > 0) {
           responseMessage = detectedLanguage === 'th' 
-            ? `ได้กรอกข้อมูลบางส่วนให้แล้วครับ ✅\n\nยังต้องการข้อมูลเพิ่มเติม:\n${missingFields.map(field => `❗ กรุณาระบุ${field}`).join('\n')}`
-            : `I've filled in some information for you ✅\n\nStill need:\n${missingFields.map(field => `❗ Please specify ${field}`).join('\n')}`;
+            ? `ได้อัพเดทข้อมูลในแบบฟอร์มแล้ว\n\nยังต้องการข้อมูลเพิ่มเติม:\n${missingFields.map(field => `• กรุณาระบุ${field}`).join('\n')}`
+            : `Form has been updated with available information.\n\nStill need:\n${missingFields.map(field => `• Please specify ${field}`).join('\n')}`;
         } else {
-          responseMessage = llmService.generateResponse(currentInput, detectedLanguage, true);
+          responseMessage = await openRouterService.generateResponse(currentInput, detectedLanguage, true);
         }
       } else {
-        // Generate AI response for general conversation
-        responseMessage = llmService.generateResponse(currentInput, detectedLanguage, false);
+        responseMessage = await openRouterService.generateResponse(currentInput, detectedLanguage, false);
       }
       
-      // Add assistant response
       setTimeout(() => {
         const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
@@ -148,10 +168,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
       console.error('Error processing message:', error);
       setIsProcessing(false);
       
-      // Fallback response
       const fallbackResponse = language === 'th' 
-        ? "ขออภัยครับ เกิดข้อผิดพลาดในการประมวลผล กรุณาลองใหม่อีกครั้งครับ 🙏"
-        : "Sorry, there was an error processing your request. Please try again. 🙏";
+        ? "ขออภัย เกิดข้อผิดพลาดในการประมวลผล กรุณาลองใหม่อีกครั้ง"
+        : "Sorry, there was an error processing your request. Please try again.";
         
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -170,15 +189,54 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
     }
   };
 
+  if (showApiKeyInput) {
+    return (
+      <Card className="h-full">
+        <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
+          <CardTitle className="flex items-center gap-2 text-gray-800">
+            <Settings className="w-5 h-5 text-blue-600" />
+            การตั้งค่า API Key
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              {language === 'th' 
+                ? 'กรุณากรอก OpenRouter API Key เพื่อใช้งานระบบ'
+                : 'Please enter your OpenRouter API Key to use the system'
+              }
+            </p>
+            <Input
+              ref={apiKeyInputRef}
+              type="password"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="sk-or-v1-..."
+              onKeyPress={(e) => e.key === 'Enter' && handleApiKeySubmit()}
+            />
+            <div className="flex gap-2">
+              <Button onClick={handleApiKeySubmit} className="flex-1">
+                {language === 'th' ? 'ยืนยัน' : 'Confirm'}
+              </Button>
+              <Button variant="outline" onClick={() => setShowApiKeyInput(false)}>
+                {language === 'th' ? 'ยกเลิก' : 'Cancel'}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="h-full">
       <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
         <CardTitle className="flex items-center gap-2 text-gray-800">
           <MessageCircle className="w-5 h-5 text-blue-600" />
-          ผู้ช่วยกรอกแบบฟอร์มอัตโนมัติ
+          ระบบช่วยกรอกแบบฟอร์มอัตโนมัติ
         </CardTitle>
         <p className="text-xs text-gray-600 mt-1">
-          {language === 'th' ? '💬 คุยได้ทุกเรื่อง | 📝 ขอยืมอุปกรณ์ได้เลย | 🎤 พูดได้' : '💬 Chat about anything | 📝 Request equipment easily | 🎤 Voice input'}
+          {language === 'th' ? 'สนทนาได้ | ขอยืมอุปกรณ์ได้ | รองรับเสียง' : 'Chat available | Equipment requests | Voice supported'}
         </p>
       </CardHeader>
       
@@ -228,7 +286,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
               className="flex-1 text-base resize-none"
               disabled={isProcessing}
             />
-            {recognition && (
+            {isSpeechAvailable && (
               <Button
                 onClick={isListening ? stopListening : startListening}
                 className={`px-3 transition-colors ${
@@ -251,9 +309,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
           </div>
           <p className="text-xs text-gray-500 mt-2 text-center">
             {language === 'th' 
-              ? 'Enter = ส่ง | Shift+Enter = บรรทัดใหม่ | 🎤 = เสียง'
-              : 'Enter = Send | Shift+Enter = New line | 🎤 = Voice'
+              ? 'Enter = ส่ง | Shift+Enter = บรรทัดใหม่'
+              : 'Enter = Send | Shift+Enter = New line'
             }
+            {isSpeechAvailable && (language === 'th' ? ' | ไมค์ = เสียง' : ' | Mic = Voice')}
           </p>
         </div>
       </CardContent>

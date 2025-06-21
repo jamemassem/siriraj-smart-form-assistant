@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MapPin, Settings, Users, MessageSquare, Paperclip, X, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +24,7 @@ const ComputerEquipmentFormPart2: React.FC<ComputerEquipmentFormPart2Props> = ({
   const { t } = useLanguage();
   const [localFormData, setLocalFormData] = useState<ComputerEquipmentFormData>(formData);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const errorRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   useEffect(() => {
     setLocalFormData(formData);
@@ -51,18 +52,36 @@ const ComputerEquipmentFormPart2: React.FC<ComputerEquipmentFormPart2Props> = ({
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    const maxSize = 10 * 1024 * 1024; // 10MB
     
-    const validFiles = files.filter(file => allowedTypes.includes(file.type));
-    if (validFiles.length !== files.length) {
+    const validFiles: File[] = [];
+    const errors: string[] = [];
+    
+    files.forEach(file => {
+      if (!allowedTypes.includes(file.type)) {
+        errors.push(`ไฟล์ ${file.name} ประเภทไม่ถูกต้อง`);
+      } else if (file.size > maxSize) {
+        errors.push(`ไฟล์ ${file.name} มีขนาดเกิน 10 MB`);
+      } else {
+        validFiles.push(file);
+      }
+    });
+    
+    if (errors.length > 0) {
       toast({
         title: 'ไฟล์ไม่ถูกต้อง',
-        description: 'กรุณาเลือกไฟล์ประเภท PDF, JPG, PNG หรือ DOCX เท่านั้น',
+        description: errors.join('\n'),
         variant: "destructive"
       });
     }
     
-    const updatedFiles = [...localFormData.attachments, ...validFiles];
-    handleFieldChange('attachments', updatedFiles);
+    if (validFiles.length > 0) {
+      const updatedFiles = [...localFormData.attachments, ...validFiles];
+      handleFieldChange('attachments', updatedFiles);
+    }
+    
+    // Reset input
+    event.target.value = '';
   };
 
   const removeFile = (index: number) => {
@@ -70,47 +89,62 @@ const ComputerEquipmentFormPart2: React.FC<ComputerEquipmentFormPart2Props> = ({
     handleFieldChange('attachments', updatedFiles);
   };
 
+  const scrollToError = (fieldName: string) => {
+    const element = errorRefs.current[fieldName];
+    if (element) {
+      element.focus();
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
     
     if (!localFormData.phone.trim()) {
-      errors.phone = t('fillRequired') + ' ' + t('phone');
+      errors.phone = 'กรุณากรอกหมายเลขโทรศัพท์';
     }
     if (!localFormData.subject.trim()) {
-      errors.subject = t('fillRequired') + ' ' + t('subject');
+      errors.subject = 'กรุณากรอกหัวข้อเรื่อง';
     }
     if (!localFormData.equipmentType) {
-      errors.equipmentType = t('fillRequired') + ' ' + t('equipmentType');
+      errors.equipmentType = 'กรุณาเลือกประเภทอุปกรณ์';
     }
     if (!localFormData.purpose.trim()) {
-      errors.purpose = t('fillRequired') + ' ' + t('purpose');
+      errors.purpose = 'กรุณาระบุวัตถุประสงค์';
     }
     if (!localFormData.startDate) {
-      errors.startDate = t('fillRequired') + ' ' + t('startDate');
+      errors.startDate = 'กรุณาเลือกวันที่เริ่มต้น';
     }
     if (!localFormData.startTime) {
-      errors.startTime = t('fillRequired') + ' ' + t('startTime');
+      errors.startTime = 'กรุณาเลือกเวลาเริ่มต้น';
     }
     if (!localFormData.endDate) {
-      errors.endDate = t('fillRequired') + ' ' + t('endDate');
+      errors.endDate = 'กรุณาเลือกวันที่สิ้นสุด';
     }
     if (!localFormData.endTime) {
-      errors.endTime = t('fillRequired') + ' ' + t('endTime');
+      errors.endTime = 'กรุณาเลือกเวลาสิ้นสุด';
     }
     if (!localFormData.installLocation.trim()) {
-      errors.installLocation = t('fillRequired') + ' ' + t('installLocation');
+      errors.installLocation = 'กรุณาระบุสถานที่ติดตั้ง';
     }
     if (!localFormData.coordinatorName.trim()) {
-      errors.coordinatorName = t('fillRequired') + ' ' + t('coordinatorName');
+      errors.coordinatorName = 'กรุณากรอกชื่อผู้ประสานงาน';
     }
     if (!localFormData.coordinatorPhone.trim()) {
-      errors.coordinatorPhone = t('fillRequired') + ' ' + t('coordinatorPhone');
+      errors.coordinatorPhone = 'กรุณากรอกเบอร์โทรผู้ประสานงาน';
     }
     if (!localFormData.receiveDateTime.trim()) {
-      errors.receiveDateTime = t('fillRequired') + ' ' + t('receiveDateTime');
+      errors.receiveDateTime = 'กรุณาระบุวันเวลาที่รับ';
     }
     
     setValidationErrors(errors);
+    
+    // Scroll to first error
+    if (Object.keys(errors).length > 0) {
+      const firstErrorField = Object.keys(errors)[0];
+      setTimeout(() => scrollToError(firstErrorField), 100);
+    }
+    
     return Object.keys(errors).length === 0;
   };
 
@@ -119,16 +153,16 @@ const ComputerEquipmentFormPart2: React.FC<ComputerEquipmentFormPart2Props> = ({
     
     if (!validateForm()) {
       toast({
-        title: t('missingInfo'),
-        description: 'กรุณากรอกข้อมูลในช่องที่มีสีแดงให้ครบถ้วน',
+        title: 'ข้อมูลไม่ครบถ้วน',
+        description: 'กรุณากรอกข้อมูลในช่องที่แสดงสีแดงให้ครบถ้วน',
         variant: "destructive"
       });
       return;
     }
 
     toast({
-      title: t('submitSuccess'),
-      description: t('submitMessage'),
+      title: 'ส่งคำขอสำเร็จ',
+      description: 'คำขอยืมอุปกรณ์ของท่านได้รับการบันทึกแล้ว',
     });
     
     console.log('Computer Equipment Form submitted:', localFormData);
@@ -149,22 +183,23 @@ const ComputerEquipmentFormPart2: React.FC<ComputerEquipmentFormPart2Props> = ({
             <div className="bg-[#29A9EF] text-white p-3 font-bold rounded">
               <h3 className="flex items-center gap-2">
                 <MapPin className="w-4 h-4" />
-                {t('locationSection')}
+                สถานที่ติดตั้ง
               </h3>
             </div>
             
             <div className="space-y-2">
               <Label className="text-sm font-medium">
-                {t('installLocation')} <span className="text-red-500">*</span>
+                สถานที่ติดตั้ง <span className="text-red-500">*</span>
               </Label>
               <Input
+                ref={(el) => errorRefs.current.installLocation = el}
                 value={localFormData.installLocation}
                 onChange={(e) => handleFieldChange('installLocation', e.target.value)}
-                placeholder={t('installLocationPlaceholder')}
+                placeholder="เช่น ห้องประชุม A ชั้น 2 อาคารศิริราช"
                 className={validationErrors.installLocation ? 'border-red-500' : ''}
               />
               {validationErrors.installLocation && (
-                <p className="text-red-500 text-xs">{validationErrors.installLocation}</p>
+                <p className="text-xs text-red-600">{validationErrors.installLocation}</p>
               )}
             </div>
           </div>
@@ -221,7 +256,7 @@ const ComputerEquipmentFormPart2: React.FC<ComputerEquipmentFormPart2Props> = ({
                 <Input
                   value={localFormData.additionalSoftwareDetails}
                   onChange={(e) => handleFieldChange('additionalSoftwareDetails', e.target.value)}
-                  placeholder={t('additionalSoftwarePlaceholder')}
+                  placeholder="โปรดระบุชื่อโปรแกรมที่ต้องการเพิ่มเติม"
                 />
               </div>
             )}
@@ -232,62 +267,65 @@ const ComputerEquipmentFormPart2: React.FC<ComputerEquipmentFormPart2Props> = ({
             <div className="bg-[#29A9EF] text-white p-3 font-bold rounded">
               <h3 className="flex items-center gap-2">
                 <Users className="w-4 h-4" />
-                {t('coordinatorSection')}
+                ผู้ประสานงาน
               </h3>
             </div>
             
             <div className="space-y-3">
               <div className="space-y-2">
                 <Label className="text-sm font-medium">
-                  {t('coordinatorName')} <span className="text-red-500">*</span>
+                  ชื่อผู้ประสานงาน <span className="text-red-500">*</span>
                 </Label>
                 <Input
+                  ref={(el) => errorRefs.current.coordinatorName = el}
                   value={localFormData.coordinatorName}
                   onChange={(e) => handleFieldChange('coordinatorName', e.target.value)}
-                  placeholder={t('coordinatorNamePlaceholder')}
+                  placeholder="ชื่อ-นามสกุล ผู้ประสานงาน"
                   className={validationErrors.coordinatorName ? 'border-red-500' : ''}
                 />
                 {validationErrors.coordinatorName && (
-                  <p className="text-red-500 text-xs">{validationErrors.coordinatorName}</p>
+                  <p className="text-xs text-red-600">{validationErrors.coordinatorName}</p>
                 )}
               </div>
               
               <div className="space-y-2">
                 <Label className="text-sm font-medium">
-                  {t('coordinatorPhone')} <span className="text-red-500">*</span>
+                  เบอร์โทรศัพท์ผู้ประสานงาน <span className="text-red-500">*</span>
                 </Label>
                 <Input
+                  ref={(el) => errorRefs.current.coordinatorPhone = el}
                   value={localFormData.coordinatorPhone}
                   onChange={(e) => handleFieldChange('coordinatorPhone', e.target.value)}
-                  placeholder={t('coordinatorPhonePlaceholder')}
+                  placeholder="หมายเลขโทรศัพท์"
                   className={validationErrors.coordinatorPhone ? 'border-red-500' : ''}
                 />
                 {validationErrors.coordinatorPhone && (
-                  <p className="text-red-500 text-xs">{validationErrors.coordinatorPhone}</p>
+                  <p className="text-xs text-red-600">{validationErrors.coordinatorPhone}</p>
                 )}
               </div>
               
               <div className="space-y-2">
-                <Label className="text-sm font-medium">{t('receiver')}</Label>
+                <Label className="text-sm font-medium">ผู้รับ</Label>
                 <Input
                   value={localFormData.receiver}
                   onChange={(e) => handleFieldChange('receiver', e.target.value)}
-                  placeholder={t('receiverPlaceholder')}
+                  placeholder="ชื่อผู้รับอุปกรณ์"
                 />
               </div>
               
               <div className="space-y-2">
                 <Label className="text-sm font-medium">
-                  {t('receiveDateTime')} <span className="text-red-500">*</span>
+                  วันเวลาที่รับ <span className="text-red-500">*</span>
                 </Label>
                 <Input
+                  ref={(el) => errorRefs.current.receiveDateTime = el}
                   type="datetime-local"
                   value={localFormData.receiveDateTime}
                   onChange={(e) => handleFieldChange('receiveDateTime', e.target.value)}
                   className={validationErrors.receiveDateTime ? 'border-red-500' : ''}
                 />
                 {validationErrors.receiveDateTime && (
-                  <p className="text-red-500 text-xs">{validationErrors.receiveDateTime}</p>
+                  <p className="text-xs text-red-600">{validationErrors.receiveDateTime}</p>
                 )}
               </div>
             </div>
@@ -298,17 +336,17 @@ const ComputerEquipmentFormPart2: React.FC<ComputerEquipmentFormPart2Props> = ({
             <div className="bg-[#29A9EF] text-white p-3 font-bold rounded">
               <h3 className="flex items-center gap-2">
                 <MessageSquare className="w-4 h-4" />
-                {t('notesSection')}
+                หิมายเหตุและเอกสารแนบ
               </h3>
             </div>
             
             <div className="space-y-3">
               <div className="space-y-2">
-                <Label className="text-sm font-medium">{t('notes')}</Label>
+                <Label className="text-sm font-medium">หมายเหตุ</Label>
                 <Textarea
                   value={localFormData.notes}
                   onChange={(e) => handleFieldChange('notes', e.target.value)}
-                  placeholder={t('notesPlaceholder')}
+                  placeholder="หมายเหตุเพิ่มเติม (ถ้ามี)"
                   className="min-h-[80px] resize-none"
                 />
               </div>
@@ -329,11 +367,11 @@ const ComputerEquipmentFormPart2: React.FC<ComputerEquipmentFormPart2Props> = ({
                       <Button type="button" variant="outline" asChild>
                         <span>
                           <Paperclip className="w-4 h-4 mr-2" />
-                          {t('attachFile')}
+                          แนบไฟล์
                         </span>
                       </Button>
                     </Label>
-                    <span className="text-xs text-gray-500">PDF, JPG, PNG, DOCX</span>
+                    <span className="text-xs text-gray-500">PDF, JPG, PNG, DOCX (ไม่เกิน 10MB)</span>
                   </div>
                   
                   {localFormData.attachments.length > 0 && (
@@ -342,6 +380,9 @@ const ComputerEquipmentFormPart2: React.FC<ComputerEquipmentFormPart2Props> = ({
                         <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
                           <Paperclip className="w-4 h-4 text-gray-500" />
                           <span className="text-sm text-gray-700 flex-1">{file.name}</span>
+                          <span className="text-xs text-gray-500">
+                            {(file.size / (1024 * 1024)).toFixed(1)} MB
+                          </span>
                           <Button
                             type="button"
                             variant="ghost"
@@ -366,7 +407,7 @@ const ComputerEquipmentFormPart2: React.FC<ComputerEquipmentFormPart2Props> = ({
               className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium py-3 transition-all duration-200"
             >
               <Send className="w-4 h-4 mr-2" />
-              {t('submitButton')}
+              ส่งคำขอยืมอุปกรณ์
             </Button>
           </div>
         </form>
