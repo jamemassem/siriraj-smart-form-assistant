@@ -1,3 +1,4 @@
+
 interface OpenRouterMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
@@ -200,7 +201,3 @@ For general conversation, respond politely and helpfully.`;
 }
 
 export const openRouterService = new OpenRouterService();
-
-export const chatOpenRouter = async (messages: OpenRouterMessage[]): Promise<string> => {
-  return await openRouterService.chat(messages);
-};
