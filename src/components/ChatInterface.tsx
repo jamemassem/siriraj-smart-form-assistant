@@ -197,10 +197,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
         <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
           <CardTitle className="flex items-center gap-2 text-gray-800">
             <MessageCircle className="w-5 h-5 text-blue-600" />
-            ระบบช่วยกรอกแบบฟอร์มอัตโนมัติ v2.0
+            เเชทบอทช่วยกรอกแบบฟอร์มอัตโนมัติ
           </CardTitle>
           <p className="text-xs text-gray-600 mt-1">
-            {language === 'th' ? 'AI อัจฉริยะวิเคราะห์ภาษาไทย | รองรับเสียง | ตรวจสอบอัตโนมัติ' : 'Smart Thai AI | Voice supported | Auto validation'}
+            {language === 'th' ? 'เเชทบอทอัจฉริยะวิเคราะห์ภาษาไทย | รองรับเสียง | ตรวจสอบอัตโนมัติ' : 'Smart Thai AI | Voice supported | Auto validation'}
           </p>
         </CardHeader>
         
