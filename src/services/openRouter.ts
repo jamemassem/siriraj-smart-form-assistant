@@ -1,5 +1,4 @@
 
-
 interface OpenRouterMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
@@ -61,7 +60,7 @@ export async function chatOpenRouter(messages: OpenRouterMessage[]): Promise<str
   }
 
   const ctrl = new AbortController();
-  const timeoutId = setTimeout(() => ctrl.abort(), 20000);
+  const timeoutId = setTimeout(() => ctrl.abort(), 30000);
 
   try {
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -69,12 +68,12 @@ export async function chatOpenRouter(messages: OpenRouterMessage[]): Promise<str
       headers: {
         Authorization: `Bearer ${API_KEY}`,
         'Content-Type': 'application/json',
-        'User-Agent': 'SmartFormAssistant/1.0'
+        'User-Agent': 'SmartFormAssistant/2.0'
       },
       body: JSON.stringify({
         model: 'qwen/qwen2.5-72b-instruct',
         messages,
-        temperature: 0.2,
+        temperature: 0.1,
         max_tokens: 2000,
       } as OpenRouterRequest),
       signal: ctrl.signal
@@ -110,24 +109,24 @@ class OpenRouterService {
       department: null,
       division: null,
       unit: null,
-      phone: null, // * required
+      phone: null,
       email: null,
       doc_ref_no: null,
       doc_date: null,
-      subject: null, // * required
-      equipment_type: null, // * required
-      quantity: null, // * required
-      purpose: null, // * required
-      start_datetime: null, // * required
-      end_datetime: null, // * required
-      install_location: null, // * required
+      subject: null,
+      equipment_type: null,
+      quantity: null,
+      purpose: null,
+      start_datetime: null,
+      end_datetime: null,
+      install_location: null,
       default_software: false,
       extra_software_choice: "no",
       extra_software_name: null,
-      coordinator: null, // * required
-      coordinator_phone: null, // * required
+      coordinator: null,
+      coordinator_phone: null,
       receiver: null,
-      receive_datetime: null, // * required
+      receive_datetime: null,
       remark: null,
       attachment: null
     };
@@ -141,33 +140,50 @@ class OpenRouterService {
     ];
   }
 
-  private getApiKey(): string | null {
-    return getApiKey();
-  }
-
   setApiKey(apiKey: string) {
     localStorage.setItem('or_key', apiKey);
   }
 
-  async chat(messages: OpenRouterMessage[], timeout: number = 20000): Promise<string> {
+  async chat(messages: OpenRouterMessage[], timeout: number = 30000): Promise<string> {
     return chatOpenRouter(messages);
   }
 
   async parseEquipmentRequest(text: string, language: 'th' | 'en'): Promise<SmartFormData> {
     const currentDateTime = this.getCurrentDateTime();
     
-    const systemPrompt = `คุณคือผู้ช่วย AI อัจฉริยะ (Smart Form Assistant) ที่เชี่ยวชาญด้านการวิเคราะห์ข้อความภาษาไทยเพื่อกรอก "แบบฟอร์มขอยืมครุภัณฑ์คอมพิวเตอร์" โดยอัตโนมัติ
+    const systemPrompt = `คุณคือผู้ช่วย AI อัจฉริยะ (Smart Form Assistant v2.0) ที่เชี่ยวชาญด้านการวิเคราะห์ข้อความภาษาไทยเพื่อกรอก "แบบฟอร์มขอยืมครุภัณฑ์คอมพิวเตอร์" โดยอัตโนมัติ
 
-**เป้าหมายหลักของคุณ:**
-รับข้อความจากผู้ใช้ (ทั้งการพิมพ์และเสียงพูด) แล้วสกัดข้อมูลที่เกี่ยวข้องทั้งหมดเพื่อกรอกลงในฟอร์ม JSON ให้ถูกต้องและครบถ้วนที่สุดเท่าที่จะทำได้
+**เป้าหมายหลัก:** สกัดข้อมูลที่เกี่ยวข้องทั้งหมดจากข้อความภาษาไทยเพื่อกรอกลงในฟอร์ม JSON ให้ถูกต้องและครบถ้วนที่สุด
 
-**Core Logic (Chain-of-Thought): คุณต้องทำตามขั้นตอนต่อไปนี้อย่างเคร่งครัด**
-1. **Analyze Input:** วิเคราะห์ประโยคที่ผู้ใช้ป้อนเข้ามาเพื่อทำความเข้าใจเจตนา (Intent) ว่าต้องการ "ยืมครุภัณฑ์"
-2. **Entity Extraction:** สกัดข้อมูล (Entities) ทั้งหมดที่พบในข้อความ แล้วจับคู่กับฟิลด์ใน FORM_STRUCTURE
-3. **Time Calculation:** สำหรับฟิลด์ที่เป็นวัน-เวลา ให้คำนวณจากเวลาปัจจุบัน: ${currentDateTime}
-4. **JSON Population:** นำข้อมูลที่สกัดได้ไปเติมในโครงสร้าง JSON
+**CURRENT_DATETIME สำหรับการคำนวณเวลา:** ${currentDateTime}
+วันนี้คือ: วันเสาร์ที่ 22 มิถุนายน 2025 เวลา 14:00 น.
 
-**โครงสร้าง JSON ที่ต้องการ:**
+**กฎการคำนวณเวลาแบบสัมพัทธ์ (สำคัญมาก):**
+
+1. **วันพรุ่งนี้** = 2025-06-23 (วันอาทิตย์)
+2. **วันศุกร์หน้า** = 2025-06-27 (วันศุกร์หน้า)
+3. **เสาร์หน้า** = 2025-06-28 (วันเสาร์หน้า)
+4. **อาทิตย์หน้า** = 2025-06-29 (วันอาทิตย์หน้า)
+5. **จันทร์หน้า** = 2025-06-30 (วันจันทร์หน้า)
+
+**ตัวอย่างการแปลงเวลา:**
+- "13:00-15:00" → start: "13:00:00", end: "15:00:00"
+- "9 โมงเช้าถึงเที่ยง" → start: "09:00:00", end: "12:00:00"
+- "บ่ายโมงถึงบ่ายสาม" → start: "13:00:00", end: "15:00:00"
+- "เช้าเก้าโมง" → start: "09:00:00"
+
+**Equipment Types ที่รองรับ:**
+- โน้ตบุ๊ก/แล็ปท็อป/คอมพิวเตอร์ → "Notebook"
+- โปรเจคเตอร์/เครื่องฉาย → "Projector"  
+- หับ/ฮับ → "Hub"
+- เมาส์ → "Mouse"
+- จอ/มอนิเตอร์ → "Monitor"
+- ดอก/dock → "Dock"
+- ฮาร์ดดิสก์ภายนอก → "External HDD"
+- สาย HDMI → "HDMI Adapter"
+- อื่นๆ → "Other"
+
+**โครงสร้าง JSON ที่ต้องส่งคืน:**
 {
   "employee_id": null,
   "full_name": null,
@@ -197,9 +213,25 @@ class OpenRouterService {
   "attachment": null
 }
 
-**Equipment Types:** Notebook, Hub, Projector, Mouse, Dock, Monitor, External HDD, HDMI Adapter, Other
+**คำสั่งสำคัญ:**
+1. สกัดข้อมูลจากข้อความให้ได้มากที่สุด
+2. คำนวณวันที่และเวลาให้ถูกต้องตาม CURRENT_DATETIME
+3. ส่งคืนเฉพาะ JSON เท่านั้น ไม่ต้องมีข้อความอื่น
+4. ถ้าข้อมูลไม่มี ให้ใส่ null
 
-**สำคัญ:** ตอบเฉพาะ JSON เท่านั้น ไม่ต้องมีข้อความอื่น หากข้อมูลไม่มี ให้ใส่ null`;
+**ตัวอย่าง Input/Output:**
+Input: "ขอยืมโปรเจคเตอร์วันศุกร์หน้า เวลา 13:00-15:00 ที่ห้องประชุมชั้น 2"
+Output:
+{
+  "equipment_type": "Projector",
+  "quantity": "1",
+  "start_datetime": "2025-06-27T13:00:00",
+  "end_datetime": "2025-06-27T15:00:00",
+  "install_location": "ห้องประชุมชั้น 2",
+  "purpose": "การใช้งานทั่วไป",
+  "subject": "ขอยืมโปรเจคเตอร์",
+  ...อื่นๆเป็น null
+}`;
 
     const messages: OpenRouterMessage[] = [
       { role: 'system', content: systemPrompt },
@@ -208,14 +240,17 @@ class OpenRouterService {
 
     try {
       const response = await this.chat(messages);
-      console.log('Raw AI Response:', response);
+      console.log('Raw AI Response for parsing:', response);
       
+      // ค้นหา JSON ในการตอบกลับ
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsedData = JSON.parse(jsonMatch[0]);
-        console.log('Parsed JSON:', parsedData);
+        console.log('Successfully parsed JSON:', parsedData);
         return parsedData;
       }
+      
+      console.log('No valid JSON found in response');
       return this.getFormStructure();
     } catch (error) {
       console.error('Error parsing equipment request:', error);
@@ -243,7 +278,7 @@ class OpenRouterService {
         ? `คุณเป็นผู้ช่วยกรอกแบบฟอร์มยืมอุปกรณ์คอมพิวเตอร์ของคณะแพทยศาสตร์ศิริราชพยาบาล มหาวิทยาลัยมหิดล
         
 กรุณาตอบด้วยภาษาไทยในลักษณะสุภาพและเป็นทางการ ไม่ใช้อีโมจิ
-ตอบอย่างสุภาพและเป็นประโยชน์`
+ตอบอย่างสุภาพและเป็นประโยชน์ สั้นกระชับ`
         : `You are a Smart Form Assistant for computer equipment borrowing at Faculty of Medicine Siriraj Hospital, Mahidol University.
 
 Please respond in English with a professional, formal tone without emojis.
@@ -264,7 +299,7 @@ For general conversation, respond politely and helpfully.`;
       }
     }
 
-    // For equipment requests, validate and return missing fields
+    // สำหรับ equipment request - ตรวจสอบ missing fields
     const missingFields = this.validateFormData(formData);
     
     if (missingFields.length === 0) {
@@ -273,7 +308,7 @@ For general conversation, respond politely and helpfully.`;
         : 'Form has been updated successfully. Please review and submit your request.';
     }
 
-    // Generate clarification message for missing required fields
+    // สร้างข้อความถามกลับสำหรับ missing required fields
     const fieldNameMap: Record<string, string> = {
       'phone': 'เบอร์โทรศัพท์ของคุณ',
       'subject': 'หัวข้อเรื่อง',
@@ -336,4 +371,3 @@ For general conversation, respond politely and helpfully.`;
 }
 
 export const openRouterService = new OpenRouterService();
-
