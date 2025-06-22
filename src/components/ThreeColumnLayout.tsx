@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,7 +5,7 @@ import ChatInterface from '@/components/ChatInterface';
 import ComputerEquipmentFormPart1 from '@/components/ComputerEquipmentFormPart1';
 import ComputerEquipmentFormPart2 from '@/components/ComputerEquipmentFormPart2';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { ComputerEquipmentFormData } from '@/types/formTypes';
+import { ComputerEquipmentFormData, SmartFormData, convertSmartFormToFormData } from '@/types/formTypes';
 
 const ThreeColumnLayout: React.FC = () => {
   const { t } = useLanguage();
@@ -48,21 +47,25 @@ const ThreeColumnLayout: React.FC = () => {
     attachments: []
   });
 
-  const handleMessageSent = (message: string, parsedData: any) => {
+  const handleMessageSent = (message: string, parsedData: SmartFormData | null) => {
     console.log('Processing message:', message);
-    console.log('Parsed data:', parsedData);
+    console.log('Parsed smart form data:', parsedData);
     
     if (parsedData) {
-      // Update form data with parsed information
+      // Convert SmartFormData to ComputerEquipmentFormData
+      const convertedData = convertSmartFormToFormData(parsedData);
+      
+      // Merge with existing form data, keeping non-null values from converted data
       const updatedFormData = { ...formData };
       
-      Object.keys(parsedData).forEach(key => {
-        const value = parsedData[key];
-        if (value !== undefined && value !== '' && key in updatedFormData) {
-          updatedFormData[key as keyof ComputerEquipmentFormData] = value;
+      Object.keys(convertedData).forEach(key => {
+        const value = convertedData[key as keyof ComputerEquipmentFormData];
+        if (value !== undefined && value !== null && value !== '') {
+          updatedFormData[key as keyof ComputerEquipmentFormData] = value as any;
         }
       });
       
+      console.log('Updated form data:', updatedFormData);
       setFormData(updatedFormData);
     }
   };

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, MessageCircle, Mic, MicOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { openRouterService, chatOpenRouter } from '@/services/openRouter';
+import { openRouterService } from '@/services/openRouter';
+import { SmartFormData } from '@/types/formTypes';
 import { toast } from '@/hooks/use-toast';
 import ApiKeyModal from '@/components/ApiKeyModal';
 
@@ -18,7 +18,7 @@ interface Message {
 }
 
 interface ChatInterfaceProps {
-  onMessageSent: (message: string, parsedData: any) => void;
+  onMessageSent: (message: string, parsedData: SmartFormData | null) => void;
 }
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
@@ -28,6 +28,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [showMic, setShowMic] = useState(true);
+  const [currentFormData, setCurrentFormData] = useState<SmartFormData | null>(null);
   const recognitionRef = useRef<any>(null);
 
   // Check if API key is needed (development only)
@@ -122,27 +123,25 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
       
       console.log('Detected language:', detectedLanguage, 'Is request:', isRequest);
       
-      let parsedData = null;
+      let parsedData: SmartFormData | null = null;
       let responseMessage = '';
       
       if (isRequest) {
+        // Parse the equipment request using new Smart Form structure
         parsedData = await openRouterService.parseEquipmentRequest(currentInput, detectedLanguage);
+        
+        // Merge with existing form data
+        if (currentFormData) {
+          parsedData = { ...currentFormData, ...parsedData };
+        }
+        
+        setCurrentFormData(parsedData);
         onMessageSent(currentInput, parsedData);
         
-        const missingFields = [];
-        if (!parsedData.purpose) missingFields.push(detectedLanguage === 'th' ? 'วัตถุประสงค์ในการยืม' : 'purpose');
-        if (!parsedData.startDate || !parsedData.startTime) missingFields.push(detectedLanguage === 'th' ? 'วันและเวลาที่ต้องการใช้งาน' : 'start date/time');
-        if (!parsedData.installLocation) missingFields.push(detectedLanguage === 'th' ? 'สถานที่ติดตั้ง' : 'installation location');
-        
-        if (missingFields.length > 0) {
-          responseMessage = detectedLanguage === 'th' 
-            ? `ได้อัพเดทข้อมูลในแบบฟอร์มแล้ว\n\nยังต้องการข้อมูลเพิ่มเติม:\n${missingFields.map(field => `• กรุณาระบุ${field}`).join('\n')}`
-            : `Form has been updated with available information.\n\nStill need:\n${missingFields.map(field => `• Please specify ${field}`).join('\n')}`;
-        } else {
-          responseMessage = await openRouterService.generateResponse(currentInput, detectedLanguage, true);
-        }
+        // Generate response using new validation system
+        responseMessage = await openRouterService.generateResponse(currentInput, parsedData, detectedLanguage, true);
       } else {
-        responseMessage = await openRouterService.generateResponse(currentInput, detectedLanguage, false);
+        responseMessage = await openRouterService.generateResponse(currentInput, currentFormData || {} as SmartFormData, detectedLanguage, false);
       }
       
       setTimeout(() => {
@@ -198,10 +197,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
         <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
           <CardTitle className="flex items-center gap-2 text-gray-800">
             <MessageCircle className="w-5 h-5 text-blue-600" />
-            ระบบช่วยกรอกแบบฟอร์มอัตโนมัติ
+            ระบบช่วยกรอกแบบฟอร์มอัตโนมัติ v2.0
           </CardTitle>
           <p className="text-xs text-gray-600 mt-1">
-            {language === 'th' ? 'สนทนาได้ | ขอยืมอุปกรณ์ได้ | รองรับเสียง' : 'Chat available | Equipment requests | Voice supported'}
+            {language === 'th' ? 'AI อัจฉริยะวิเคราะห์ภาษาไทย | รองรับเสียง | ตรวจสอบอัตโนมัติ' : 'Smart Thai AI | Voice supported | Auto validation'}
           </p>
         </CardHeader>
         
