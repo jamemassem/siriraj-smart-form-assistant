@@ -3,13 +3,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Send, MessageCircle, Mic, MicOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { openRouterService } from '@/services/openRouter';
-import { SmartFormData } from '@/types/formTypes';
+import { SmartFormData, ComputerEquipmentFormData, convertSmartFormToFormData } from '@/types/formTypes';
 import { toast } from '@/hooks/use-toast';
 import ApiKeyModal from '@/components/ApiKeyModal';
+import * as openRouter from '@/services/openRouter';
 
 interface Message {
   id: string;
@@ -20,9 +19,11 @@ interface Message {
 
 interface ChatInterfaceProps {
   onMessageSent: (message: string, parsedData: SmartFormData | null) => void;
+  formData: ComputerEquipmentFormData;
+  onFormDataChange: (newFormData: ComputerEquipmentFormData) => void;
 }
 
-const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
+const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent, formData, onFormDataChange }) => {
   const { language } = useLanguage();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -30,7 +31,39 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
   const [isListening, setIsListening] = useState(false);
   const [showMic, setShowMic] = useState(true);
   const recognitionRef = useRef<any>(null);
-  const chatBoxRef = useRef<HTMLDivElement>(null);
+  const chatRef = useRef<HTMLDivElement>(null);
+
+  // Field name mapping for Thai error messages
+  const fieldNameMap: Record<string, string> = {
+    'phone': 'เบอร์โทรศัพท์',
+    'subject': 'หัวข้อเรื่อง',
+    'equipmentType': 'ประเภทอุปกรณ์',
+    'quantity': 'จำนวน',
+    'purpose': 'วัตถุประสงค์',
+    'startDate': 'วันที่เริ่มต้น',
+    'startTime': 'เวลาเริ่มต้น',
+    'endDate': 'วันที่สิ้นสุด',
+    'endTime': 'เวลาสิ้นสุด',
+    'installLocation': 'สถานที่ติดตั้ง',
+    'coordinatorName': 'ชื่อผู้ประสานงาน',
+    'coordinatorPhone': 'เบอร์โทรผู้ประสานงาน',
+    'receiveDateTime': 'วันและเวลารับของ'
+  };
+
+  // Required fields that must be filled
+  const requiredFields = [
+    'phone', 'subject', 'equipmentType', 'quantity', 'purpose',
+    'startDate', 'startTime', 'endDate', 'endTime', 'installLocation',
+    'coordinatorName', 'coordinatorPhone', 'receiveDateTime'
+  ];
+
+  // Get missing required fields
+  const getMissingRequiredFields = (): string[] => {
+    return requiredFields.filter(field => {
+      const value = formData[field as keyof ComputerEquipmentFormData];
+      return !value || value === '';
+    });
+  };
 
   // Check if API key is needed (development only)
   const needKey = !import.meta.env.VITE_OPENROUTER_API_KEY && 
@@ -40,12 +73,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
   // Check if speech recognition is available
   const hasSpeechRecognition = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 
-  // ✅ Auto-scroll ทุกครั้งที่ messages เปลี่ยน
+  // Auto-scroll when messages change
   useEffect(() => {
-    if (chatBoxRef.current) {
-      chatBoxRef.current.scrollTo({ 
-        top: chatBoxRef.current.scrollHeight,
-        behavior: 'smooth' 
+    if (chatRef.current) {
+      chatRef.current.scrollTo({
+        top: chatRef.current.scrollHeight,
+        behavior: 'smooth'
       });
     }
   }, [messages]);
@@ -97,6 +130,61 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
     }
   }, [language, hasSpeechRecognition]);
 
+  const addBot = (text: string) => {
+    const assistantMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      text,
+      isUser: false,
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, assistantMessage]);
+  };
+
+  const updateForm = (extracted: any) => {
+    // Convert extracted data to form format
+    const smartFormData: SmartFormData = {
+      employee_id: extracted.employee_id || null,
+      full_name: extracted.full_name || null,
+      position: extracted.position || null,
+      department: extracted.department || null,
+      division: extracted.division || null,
+      unit: extracted.unit || null,
+      phone: extracted.phone || null,
+      email: extracted.email || null,
+      doc_ref_no: null,
+      doc_date: null,
+      subject: extracted.subject || null,
+      equipment_type: extracted.equipment_type || null,
+      quantity: extracted.quantity || null,
+      purpose: extracted.purpose || null,
+      start_datetime: extracted.start_datetime || null,
+      end_datetime: extracted.end_datetime || null,
+      install_location: extracted.install_location || null,
+      default_software: extracted.default_software || false,
+      extra_software_choice: extracted.extra_software_choice || "no",
+      extra_software_name: extracted.extra_software_name || null,
+      coordinator: extracted.coordinator || null,
+      coordinator_phone: extracted.coordinator_phone || null,
+      receiver: extracted.receiver || null,
+      receive_datetime: extracted.receive_datetime || null,
+      remark: extracted.remark || null,
+      attachment: extracted.attachment || null
+    };
+
+    const convertedData = convertSmartFormToFormData(smartFormData);
+    
+    // Merge with existing form data
+    const updatedFormData = { ...formData };
+    Object.keys(convertedData).forEach(key => {
+      const value = convertedData[key as keyof ComputerEquipmentFormData];
+      if (value !== undefined && value !== null && value !== '') {
+        updatedFormData[key as keyof ComputerEquipmentFormData] = value as any;
+      }
+    });
+    
+    onFormDataChange(updatedFormData);
+  };
+
   const startListening = () => {
     if (recognitionRef.current && !isListening && hasSpeechRecognition) {
       recognitionRef.current.lang = language === 'th' ? 'th-TH' : 'en-US';
@@ -112,7 +200,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
     }
   };
 
-  // ✅ ปรับ workflow ตาม PATCH - extract first + validate after
+  // NEW EXTRACT-FIRST WORKFLOW
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isProcessing) return;
 
@@ -126,65 +214,73 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
     setMessages(prev => [...prev, userMessage]);
     setIsProcessing(true);
     
-    const currentInput = inputValue;
+    const userInput = inputValue;
     setInputValue('');
 
     try {
-      // ▶️ 1. Detect language + isRequest
-      const isRequest = openRouterService.isEquipmentRequest(currentInput);
-      const detectedLanguage = openRouterService.detectLanguage(currentInput);
+      // 1. Detect language
+      const lang = openRouter.detectLang(userInput);
+      console.log('Detected language:', lang);
       
-      console.log('Detected language:', detectedLanguage, 'Is request:', isRequest);
+      // 2. Check if it's an equipment request
+      const isRequest = openRouter.isEquipmentRequest(userInput);
+      console.log('Is equipment request:', isRequest);
       
-      let parsedData: SmartFormData | null = null;
-      
-      // ▶️ 2. ถ้าเป็นคำขอยืม ให้ LLM สกัดข้อมูล
       if (isRequest) {
-        parsedData = await openRouterService.parseEquipmentRequest(currentInput, detectedLanguage);
-        console.log('Extracted data:', parsedData);
+        // 3. EXTRACT step → fill form
+        const extracted = await openRouter.parseEquipmentRequest(userInput, lang);
+        console.log('Extracted data:', extracted);
         
-        // ▶️ 3. ส่งข้อมูลไปยัง parent component เพื่อ merge เข้า state ฟอร์ม **ก่อน** validate
-        onMessageSent(currentInput, parsedData);
+        if (Object.keys(extracted).length) {
+          updateForm(extracted);
+        }
+        
+        // 4. VALIDATE after merge
+        const missing = getMissingRequiredFields();
+        console.log('Missing fields:', missing);
+        
+        if (missing.length) {
+          const missingFieldsText = missing
+            .map(field => fieldNameMap[field] || field)
+            .join('\n❗ ');
+          
+          addBot(lang === 'th'
+            ? `โปรดระบุข้อมูลเพิ่มเติมดังนี้:\n❗ ${missingFieldsText}`
+            : `Please provide the following information:\n❗ ${missing.join('\n❗ ')}`
+          );
+        } else {
+          addBot(lang === 'th'
+            ? 'ได้อัพเดตข้อมูลในแบบฟอร์มเรียบร้อยแล้ว กรุณาตรวจสอบความถูกต้องก่อนส่งครับ'
+            : 'I have updated the form. Please review before submitting.'
+          );
+        }
       } else {
-        // สำหรับข้อความทั่วไป ส่ง null เป็น parsedData
-        onMessageSent(currentInput, null);
+        // General chat response
+        addBot(lang === 'th'
+          ? 'กรุณาระบุคำขอยืมอุปกรณ์ที่ชัดเจน เช่น "ขอยืมโปรเจคเตอร์วันศุกร์หน้า เวลา 13:00-15:00"'
+          : 'Please specify your equipment borrowing request clearly, e.g., "I want to borrow a projector next Friday from 1-3 PM"'
+        );
       }
       
-      // ▶️ 4. สร้างคำตอบ (parent จะจัดการ validation เอง)
-      const responseMessage = await openRouterService.generateResponse(currentInput, detectedLanguage, isRequest);
-      
-      setTimeout(() => {
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          text: responseMessage,
-          isUser: false,
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, assistantMessage]);
-        setIsProcessing(false);
-      }, 500);
+      // Notify parent component
+      onMessageSent(userInput, null);
       
     } catch (error) {
       console.error('Error processing message:', error);
-      setIsProcessing(false);
       
       const fallbackResponse = language === 'th' 
-        ? "ขออภัย เกิดข้อผิดพลาดในการเชื่อมต่อ LLM กรุณาลองใหม่อีกครั้ง"
-        : "Sorry, there was an error connecting to LLM. Please try again.";
+        ? "ขออภัย เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง"
+        : "Sorry, there was an error processing your request. Please try again.";
         
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: fallbackResponse,
-        isUser: false,
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      addBot(fallbackResponse);
       
       toast({
         title: language === 'th' ? 'ข้อผิดพลาด' : 'Error',
-        description: language === 'th' ? 'เกิดข้อผิดพลาดในการเชื่อมต่อ LLM' : 'Error connecting to LLM',
+        description: language === 'th' ? 'เกิดข้อผิดพลาดในการประมวลผล' : 'Error processing request',
         variant: "destructive"
       });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -206,18 +302,18 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
         <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 flex-none">
           <CardTitle className="flex items-center gap-2 text-gray-800">
             <MessageCircle className="w-5 h-5 text-blue-600" />
-            เเชทบอทช่วยกรอกแบบฟอร์มอัตโนมัติ
+            แชทบอทช่วยกรอกแบบฟอร์มอัตโนมัติ
           </CardTitle>
           <p className="text-xs text-gray-600 mt-1">
-            {language === 'th' ? 'เเชทบอทอัจฉริยะวิเคราะห์ภาษาไทย | รองรับเสียง | ตรวจสอบอัตโนมัติ' : 'Smart Thai AI | Voice supported | Auto validation'}
+            {language === 'th' ? 'แชทบอทอัจฉริยะวิเคราะห์ภาษาไทย | รองรับเสียง | ตรวจสอบอัตโนมัติ' : 'Smart Thai AI | Voice supported | Auto validation'}
           </p>
         </CardHeader>
         
         <CardContent className="p-0 flex flex-col h-full">
-          {/* ✅ Scroll container with ref */}
+          {/* Chat messages container */}
           <div 
-            ref={chatBoxRef}
-            className="flex-1 overflow-y-auto p-4"
+            ref={chatRef}
+            className="flex-1 overflow-y-auto p-4 chat-box"
           >
             <div className="space-y-4">
               {messages.map((message) => (
@@ -253,7 +349,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
             </div>
           </div>
           
-          {/* ✅ Input section - flex-none */}
+          {/* Input section */}
           <div className="flex-none p-4 border-t bg-gray-50">
             <div className="flex gap-2">
               <Input
@@ -300,3 +396,4 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
 };
 
 export default ChatInterface;
+

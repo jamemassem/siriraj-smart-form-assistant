@@ -1,111 +1,175 @@
 
-import { OpenRouterMessage, SmartFormData } from '@/types/openRouterTypes';
-import { extractJson } from '@/utils/jsonExtraction';
-import { validateFormData } from '@/utils/validation';
-import { chatOpenRouter } from '@/services/openRouterClient';
-import { PromptBuilder } from '@/services/promptBuilder';
-import { RequestDetection } from '@/services/requestDetection';
+// --- types ----------------------------------------------------------
+interface ORMsg { role:'system'|'user'|'assistant'; content:string }
+interface ORReq { model:string; messages:ORMsg[]; temperature:number; max_tokens:number }
+// --------------------------------------------------------------------
 
-class OpenRouterService {
-  private promptBuilder = new PromptBuilder();
-  private requestDetection = new RequestDetection();
+const API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY || localStorage.getItem('or_key');
 
-  private getFormStructure(): SmartFormData {
-    return {
-      employee_id: null,
-      full_name: null,
-      position: null,
-      department: null,
-      division: null,
-      unit: null,
-      phone: null,
-      email: null,
-      doc_ref_no: null,
-      doc_date: null,
-      subject: null,
-      equipment_type: null,
-      quantity: null,
-      purpose: null,
-      start_datetime: null,
-      end_datetime: null,
-      install_location: null,
-      default_software: false,
-      extra_software_choice: "no",
-      extra_software_name: null,
-      coordinator: null,
-      coordinator_phone: null,
-      receiver: null,
-      receive_datetime: null,
-      remark: null,
-      attachment: null
-    };
-  }
+if (!API_KEY) throw new Error('Missing OpenRouter API-Key');
 
-  setApiKey(apiKey: string) {
-    localStorage.setItem('or_key', apiKey);
-  }
+const ENDPT = 'https://openrouter.ai/api/v1/chat/completions';
+const MODEL = 'qwen/qwen2.5-72b-instruct';
 
-  async chat(messages: OpenRouterMessage[], timeout: number = 30000): Promise<string> {
-    return chatOpenRouter(messages);
-  }
-
-  async parseEquipmentRequest(text: string, language: 'th' | 'en'): Promise<SmartFormData> {
-    const systemPrompt = this.promptBuilder.buildEquipmentRequestPrompt();
-
-    const messages: OpenRouterMessage[] = [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: text }
-    ];
-
-    try {
-      const response = await this.chat(messages);
-      console.log('Raw AI Response for parsing:', response);
-      
-      const parsedData = extractJson(response);
-      console.log('Successfully parsed JSON:', parsedData);
-      
-      return { ...this.getFormStructure(), ...parsedData };
-    } catch (error) {
-      console.error('Error parsing equipment request:', error);
-      return this.getFormStructure();
+export async function chat(messages: ORMsg[], t = 0.0, max = 512): Promise<string> {
+  const ctrl = new AbortController();
+  const id = setTimeout(() => ctrl.abort(), 20000);
+  const body: ORReq = { model: MODEL, messages, temperature: t, max_tokens: max };
+  
+  try {
+    const res = await fetch(ENDPT, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${API_KEY}`,
+        'Content-Type': 'application/json',
+        'User-Agent': 'SmartFormAssistant/2.0'
+      },
+      body: JSON.stringify(body),
+      signal: ctrl.signal
+    });
+    
+    clearTimeout(id);
+    
+    if (!res.ok) {
+      throw new Error(`OpenRouter ${res.status}`);
     }
-  }
-
-  validateFormData(formData: SmartFormData): string[] {
-    return validateFormData(formData);
-  }
-
-  async generateResponse(userMessage: string, language: 'th' | 'en', isRequest: boolean): Promise<string> {
-    if (!isRequest) {
-      const systemPrompt = this.promptBuilder.buildGeneralChatPrompt(language);
-
-      const messages: OpenRouterMessage[] = [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage }
-      ];
-
-      try {
-        return await this.chat(messages);
-      } catch (error) {
-        console.error('Error generating response:', error);
-        return language === 'th' 
-          ? 'ขออภัย เกิดข้อผิดพลาดในการประมวลผล กรุณาลองใหม่อีกครั้ง'
-          : 'Sorry, there was an error processing your request. Please try again.';
-      }
-    }
-
-    return language === 'th'
-      ? 'ได้อัพเดทข้อมูลในแบบฟอร์มเรียบร้อยแล้ว กรุณาตรวจสอบความถูกต้องและส่งคำขอ'
-      : 'Form has been updated successfully. Please review and submit your request.';
-  }
-
-  detectLanguage(text: string): 'th' | 'en' {
-    return this.requestDetection.detectLanguage(text);
-  }
-
-  isEquipmentRequest(text: string): boolean {
-    return this.requestDetection.isEquipmentRequest(text);
+    
+    const data = await res.json();
+    return data.choices[0].message.content;
+  } catch (error) {
+    clearTimeout(id);
+    throw error;
   }
 }
 
-export const openRouterService = new OpenRouterService();
+// ---------- helpers --------------------------------------------------
+const extractJSON = (txt: string) => {
+  const m = txt.match(/\{[\s\S]*}/);
+  if (!m) return {};
+  try { 
+    return JSON.parse(m[0]); 
+  } catch { 
+    return {}; 
+  }
+}
+
+// ---------- public  --------------------------------------------------
+export async function parseEquipmentRequest(text: string, lang: 'th' | 'en') {
+  const SYS = lang === 'th'
+    ? `คุณคือผู้ช่วยกรอกแบบฟอร์มขอยืมอุปกรณ์คอมพิวเตอร์ ให้แปลงข้อความของผู้ใช้เป็น JSON โดยตรง
+
+กรอกข้อมูลเฉพาะที่มีในข้อความ ห้ามเดา ใช้รูปแบบ JSON นี้:
+{
+  "employee_id": null,
+  "full_name": null,
+  "position": null,
+  "department": null,
+  "division": null,
+  "unit": null,
+  "phone": null,
+  "email": null,
+  "subject": null,
+  "equipment_type": "โปรเจคเตอร์|แล็ปท็อป|คอมพิวเตอร์|...",
+  "quantity": "1",
+  "purpose": null,
+  "start_datetime": "2025-01-10T13:00:00",
+  "end_datetime": "2025-01-10T15:00:00",
+  "install_location": null,
+  "default_software": false,
+  "extra_software_choice": "no",
+  "extra_software_name": null,
+  "coordinator": null,
+  "coordinator_phone": null,
+  "receiver": null,
+  "receive_datetime": null,
+  "remark": null,
+  "attachment": null
+}
+
+ตอบเป็น JSON object เท่านั้น ไม่ต้องมี markdown หรือคำอธิบาย`
+    : `You are a smart form assistant for computer equipment borrowing. Convert user message to JSON format.
+
+Fill only the information available in the message. Do not guess. Use this JSON structure:
+{
+  "employee_id": null,
+  "full_name": null,
+  "position": null,
+  "department": null,
+  "division": null,
+  "unit": null,
+  "phone": null,
+  "email": null,
+  "subject": null,
+  "equipment_type": "projector|laptop|computer|...",
+  "quantity": "1",
+  "purpose": null,
+  "start_datetime": "2025-01-10T13:00:00",
+  "end_datetime": "2025-01-10T15:00:00",
+  "install_location": null,
+  "default_software": false,
+  "extra_software_choice": "no",
+  "extra_software_name": null,
+  "coordinator": null,
+  "coordinator_phone": null,
+  "receiver": null,
+  "receive_datetime": null,
+  "remark": null,
+  "attachment": null
+}
+
+Respond with raw JSON object only. No markdown or explanations.`;
+
+  try {
+    const rsp = await chat([
+      { role: 'system', content: SYS },
+      { role: 'user', content: text }
+    ]);
+    
+    console.log('Raw AI Response:', rsp);
+    const extracted = extractJSON(rsp);
+    console.log('Extracted JSON:', extracted);
+    
+    return extracted;
+  } catch (error) {
+    console.error('Error in parseEquipmentRequest:', error);
+    return {};
+  }
+}
+
+export function detectLang(str: string): 'th' | 'en' {
+  return /[\u0E00-\u0E7F]/.test(str) ? 'th' : 'en';
+}
+
+export function isEquipmentRequest(text: string): boolean {
+  const lowerText = text.toLowerCase();
+  
+  const thaiRequestKeywords = [
+    'ขอยืม', 'ต้องการยืม', 'ยืม', 'ขอ', 'ต้องการ', 'จอง', 'ขอจอง',
+    'ใช้', 'ต้องการใช้', 'ขอใช้'
+  ];
+  
+  const englishRequestKeywords = [
+    'borrow', 'want to borrow', 'need', 'request', 'book', 'reserve',
+    'use', 'want to use', 'need to use', 'can i', 'could i', 'may i'
+  ];
+  
+  const equipmentKeywords = [
+    'โน้ตบุ๊ก', 'แล็ปท็อป', 'คอมพิวเตอร์', 'notebook', 'laptop', 'computer',
+    'โปรเจคเตอร์', 'เครื่องฉาย', 'projector',
+    'หับ', 'ฮับ', 'hub',
+    'เราท์เตอร์', 'router',
+    'เมาส์', 'mouse',
+    'จอ', 'มอนิเตอร์', 'monitor', 'screen',
+    'dock', 'hdd', 'hdmi'
+  ];
+  
+  const hasRequestKeyword = thaiRequestKeywords.some(keyword => text.includes(keyword)) ||
+                           englishRequestKeywords.some(keyword => lowerText.includes(keyword));
+  
+  const hasEquipmentKeyword = equipmentKeywords.some(keyword => 
+    lowerText.includes(keyword.toLowerCase())
+  );
+  
+  return hasRequestKeyword && hasEquipmentKeyword;
+}
+

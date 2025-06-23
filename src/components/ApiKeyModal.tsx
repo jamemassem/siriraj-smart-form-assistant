@@ -10,6 +10,9 @@ interface ApiKeyModalProps {
 }
 
 const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onSave }) => {
+  // Don't render if API key is already set in environment
+  if (import.meta.env.VITE_OPENROUTER_API_KEY) return null;
+  
   // Don't render in production
   if (process.env.NODE_ENV === 'production') {
     return null;
@@ -79,3 +82,4 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onSave }) => {
 };
 
 export default ApiKeyModal;
+

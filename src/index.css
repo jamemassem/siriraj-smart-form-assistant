@@ -103,9 +103,31 @@
   }
 }
 
-/* ✅ Chat panel height fix */
+/* Chat and layout utilities */
 @layer utilities {
   .chat-panel {
     @apply flex flex-col h-[calc(100vh-4rem)];
   }
+  
+  .chat-box {
+    max-height: calc(100vh - 200px);
+  }
+  
+  .page-grid {
+    @apply grid gap-4;
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  @media (max-width: 1023px) {
+    .page-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  
+  @media (max-width: 767px) {
+    .page-grid {
+      grid-template-columns: 1fr;
+    }
+  }
 }
+
