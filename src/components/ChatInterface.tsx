@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, MessageCircle, Mic, MicOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -28,7 +29,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [showMic, setShowMic] = useState(true);
-  const [currentFormData, setCurrentFormData] = useState<SmartFormData | null>(null);
   const recognitionRef = useRef<any>(null);
 
   // Check if API key is needed (development only)
@@ -101,6 +101,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
     }
   };
 
+  // ✅ เปลี่ยน handleSendMessage ให้ทำลำดับดังนี้
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isProcessing) return;
 
@@ -127,21 +128,18 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
       let responseMessage = '';
       
       if (isRequest) {
-        // Parse the equipment request using new Smart Form structure
+        // 1 ▶️ เรียก LLM สกัดข้อมูล
         parsedData = await openRouterService.parseEquipmentRequest(currentInput, detectedLanguage);
+        console.log('Extracted data:', parsedData);
         
-        // Merge with existing form data
-        if (currentFormData) {
-          parsedData = { ...currentFormData, ...parsedData };
-        }
-        
-        setCurrentFormData(parsedData);
+        // 2 ▶️ ส่งข้อมูลไปยัง parent component เพื่อ merge เข้า state ฟอร์ม
         onMessageSent(currentInput, parsedData);
         
-        // Generate response using new validation system
-        responseMessage = await openRouterService.generateResponse(currentInput, parsedData, detectedLanguage, true);
+        // 3 ▶️ สร้างคำตอบสำเร็จ (ไม่ต้องตรวจสอบ missing fields ที่นี่)
+        responseMessage = await openRouterService.generateResponse(currentInput, detectedLanguage, true);
       } else {
-        responseMessage = await openRouterService.generateResponse(currentInput, currentFormData || {} as SmartFormData, detectedLanguage, false);
+        // สำหรับข้อความทั่วไป
+        responseMessage = await openRouterService.generateResponse(currentInput, detectedLanguage, false);
       }
       
       setTimeout(() => {

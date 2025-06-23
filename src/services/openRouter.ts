@@ -52,6 +52,23 @@ const getApiKey = (): string | null => {
   return localStorage.getItem('or_key') || import.meta.env.VITE_OPENROUTER_API_KEY || null;
 };
 
+// NEW helper – ตัด markdown + ข้อความอื่น แล้ว parse JSON
+const extractJson = (raw: string): any => {
+  try {
+    // หา JSON block ในข้อความ
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (match) {
+      return JSON.parse(match[0]);
+    }
+    
+    // ถ้าไม่เจอ JSON ให้ลอง parse ทั้งหมด
+    return JSON.parse(raw.trim());
+  } catch (error) {
+    console.error('Failed to extract JSON:', error);
+    return {};
+  }
+};
+
 export async function chatOpenRouter(messages: OpenRouterMessage[]): Promise<string> {
   const API_KEY = getApiKey();
   
@@ -148,6 +165,7 @@ class OpenRouterService {
     return chatOpenRouter(messages);
   }
 
+  // ✅ แก้คืนค่าจาก parseEquipmentRequest() ให้เป็น object
   async parseEquipmentRequest(text: string, language: 'th' | 'en'): Promise<SmartFormData> {
     const currentDateTime = this.getCurrentDateTime();
     
@@ -167,10 +185,10 @@ class OpenRouterService {
 5. **จันทร์หน้า** = 2025-06-30 (วันจันทร์หน้า)
 
 **ตัวอย่างการแปลงเวลา:**
-- "13:00-15:00" → start: "13:00:00", end: "15:00:00"
-- "9 โมงเช้าถึงเที่ยง" → start: "09:00:00", end: "12:00:00"
-- "บ่ายโมงถึงบ่ายสาม" → start: "13:00:00", end: "15:00:00"
-- "เช้าเก้าโมง" → start: "09:00:00"
+- "13:00-15:00" → start: "2025-06-27T13:00", end: "2025-06-27T15:00"
+- "9 โมงเช้าถึงเที่ยง" → start: "2025-06-27T09:00", end: "2025-06-27T12:00"
+- "บ่ายโมงถึงบ่ายสาม" → start: "2025-06-27T13:00", end: "2025-06-27T15:00"
+- "เช้าเก้าโมง" → start: "2025-06-27T09:00"
 
 **Equipment Types ที่รองรับ:**
 - โน้ตบุ๊ก/แล็ปท็อป/คอมพิวเตอร์ → "Notebook"
@@ -183,8 +201,19 @@ class OpenRouterService {
 - สาย HDMI → "HDMI Adapter"
 - อื่นๆ → "Other"
 
-**โครงสร้าง JSON ที่ต้องส่งคืน:**
+🛑 IMPORTANT: ตอบกลับเป็น JSON raw object เท่านั้น ไม่มีคำอธิบายอื่น
+
+**ตัวอย่าง Input/Output:**
+Input: "ขอยืมโปรเจคเตอร์วันศุกร์หน้า เวลา 13:00-15:00 ที่ห้องประชุมชั้น 2"
+Output:
 {
+  "equipment_type": "Projector",
+  "quantity": "1",
+  "start_datetime": "2025-06-27T13:00",
+  "end_datetime": "2025-06-27T15:00",
+  "install_location": "ห้องประชุมชั้น 2",
+  "purpose": "การใช้งานทั่วไป",
+  "subject": "ขอยืมโปรเจคเตอร์",
   "employee_id": null,
   "full_name": null,
   "position": null,
@@ -195,13 +224,6 @@ class OpenRouterService {
   "email": null,
   "doc_ref_no": null,
   "doc_date": null,
-  "subject": null,
-  "equipment_type": null,
-  "quantity": null,
-  "purpose": null,
-  "start_datetime": null,
-  "end_datetime": null,
-  "install_location": null,
   "default_software": false,
   "extra_software_choice": "no",
   "extra_software_name": null,
@@ -211,26 +233,6 @@ class OpenRouterService {
   "receive_datetime": null,
   "remark": null,
   "attachment": null
-}
-
-**คำสั่งสำคัญ:**
-1. สกัดข้อมูลจากข้อความให้ได้มากที่สุด
-2. คำนวณวันที่และเวลาให้ถูกต้องตาม CURRENT_DATETIME
-3. ส่งคืนเฉพาะ JSON เท่านั้น ไม่ต้องมีข้อความอื่น
-4. ถ้าข้อมูลไม่มี ให้ใส่ null
-
-**ตัวอย่าง Input/Output:**
-Input: "ขอยืมโปรเจคเตอร์วันศุกร์หน้า เวลา 13:00-15:00 ที่ห้องประชุมชั้น 2"
-Output:
-{
-  "equipment_type": "Projector",
-  "quantity": "1",
-  "start_datetime": "2025-06-27T13:00:00",
-  "end_datetime": "2025-06-27T15:00:00",
-  "install_location": "ห้องประชุมชั้น 2",
-  "purpose": "การใช้งานทั่วไป",
-  "subject": "ขอยืมโปรเจคเตอร์",
-  ...อื่นๆเป็น null
 }`;
 
     const messages: OpenRouterMessage[] = [
@@ -242,16 +244,12 @@ Output:
       const response = await this.chat(messages);
       console.log('Raw AI Response for parsing:', response);
       
-      // ค้นหา JSON ในการตอบกลับ
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsedData = JSON.parse(jsonMatch[0]);
-        console.log('Successfully parsed JSON:', parsedData);
-        return parsedData;
-      }
+      // ใช้ extractJson helper แทนการ parse JSON โดยตรง
+      const parsedData = extractJson(response);
+      console.log('Successfully parsed JSON:', parsedData);
       
-      console.log('No valid JSON found in response');
-      return this.getFormStructure();
+      // ส่งคืนข้อมูลที่ parse ได้ หรือ default structure
+      return { ...this.getFormStructure(), ...parsedData };
     } catch (error) {
       console.error('Error parsing equipment request:', error);
       return this.getFormStructure();
@@ -272,7 +270,7 @@ Output:
     return missingFields;
   }
 
-  async generateResponse(userMessage: string, formData: SmartFormData, language: 'th' | 'en', isRequest: boolean): Promise<string> {
+  async generateResponse(userMessage: string, language: 'th' | 'en', isRequest: boolean): Promise<string> {
     if (!isRequest) {
       const systemPrompt = language === 'th'
         ? `คุณเป็นผู้ช่วยกรอกแบบฟอร์มยืมอุปกรณ์คอมพิวเตอร์ของคณะแพทยศาสตร์ศิริราชพยาบาล มหาวิทยาลัยมหิดล
@@ -299,35 +297,10 @@ For general conversation, respond politely and helpfully.`;
       }
     }
 
-    // สำหรับ equipment request - ตรวจสอบ missing fields
-    const missingFields = this.validateFormData(formData);
-    
-    if (missingFields.length === 0) {
-      return language === 'th'
-        ? 'ได้อัพเดทข้อมูลในแบบฟอร์มเรียบร้อยแล้ว กรุณาตรวจสอบความถูกต้องและส่งคำขอ'
-        : 'Form has been updated successfully. Please review and submit your request.';
-    }
-
-    // สร้างข้อความถามกลับสำหรับ missing required fields
-    const fieldNameMap: Record<string, string> = {
-      'phone': 'เบอร์โทรศัพท์ของคุณ',
-      'subject': 'หัวข้อเรื่อง',
-      'equipment_type': 'ประเภทอุปกรณ์',
-      'quantity': 'จำนวนที่ต้องการยืม',
-      'purpose': 'วัตถุประสงค์ในการยืม',
-      'start_datetime': 'วันและเวลาที่ต้องการใช้งาน',
-      'end_datetime': 'วันและเวลาสิ้นสุดการใช้งาน',
-      'install_location': 'สถานที่ติดตั้ง',
-      'coordinator': 'ชื่อผู้ประสานงาน',
-      'coordinator_phone': 'เบอร์โทรผู้ประสานงาน',
-      'receive_datetime': 'วันและเวลารับของ'
-    };
-
-    const missingFieldsText = missingFields
-      .map(field => `❗ กรุณาระบุ${fieldNameMap[field] || field}`)
-      .join('\n');
-
-    return `รับทราบครับ/ค่ะ เพื่อดำเนินการต่อ กรุณาให้ข้อมูลเพิ่มเติมดังนี้:\n${missingFieldsText}`;
+    // สำหรับ equipment request - ตอบว่าได้อัพเดทข้อมูลแล้ว
+    return language === 'th'
+      ? 'ได้อัพเดทข้อมูลในแบบฟอร์มเรียบร้อยแล้ว กรุณาตรวจสอบความถูกต้องและส่งคำขอ'
+      : 'Form has been updated successfully. Please review and submit your request.';
   }
 
   detectLanguage(text: string): 'th' | 'en' {

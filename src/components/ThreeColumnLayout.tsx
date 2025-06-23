@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,9 +7,11 @@ import ComputerEquipmentFormPart1 from '@/components/ComputerEquipmentFormPart1'
 import ComputerEquipmentFormPart2 from '@/components/ComputerEquipmentFormPart2';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { ComputerEquipmentFormData, SmartFormData, convertSmartFormToFormData } from '@/types/formTypes';
+import { openRouterService } from '@/services/openRouter';
+import { toast } from '@/hooks/use-toast';
 
 const ThreeColumnLayout: React.FC = () => {
-  const { t } = useLanguage();
+  const { language } = useLanguage();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [formData, setFormData] = useState<ComputerEquipmentFormData>({
     // Page 1 - Recorder Information
@@ -47,12 +50,44 @@ const ThreeColumnLayout: React.FC = () => {
     attachments: []
   });
 
+  // Field name mapping for Thai error messages
+  const fieldNameMap: Record<string, string> = {
+    'phone': 'เบอร์โทรศัพท์',
+    'subject': 'หัวข้อเรื่อง',
+    'equipmentType': 'ประเภทอุปกรณ์',
+    'quantity': 'จำนวน',
+    'purpose': 'วัตถุประสงค์',
+    'startDate': 'วันที่เริ่มต้น',
+    'startTime': 'เวลาเริ่มต้น',
+    'endDate': 'วันที่สิ้นสุด',
+    'endTime': 'เวลาสิ้นสุด',
+    'installLocation': 'สถานที่ติดตั้ง',
+    'coordinatorName': 'ชื่อผู้ประสานงาน',
+    'coordinatorPhone': 'เบอร์โทรผู้ประสานงาน',
+    'receiveDateTime': 'วันและเวลารับของ'
+  };
+
+  // Required fields that must be filled
+  const requiredFields = [
+    'phone', 'subject', 'equipmentType', 'quantity', 'purpose',
+    'startDate', 'startTime', 'endDate', 'endTime', 'installLocation',
+    'coordinatorName', 'coordinatorPhone', 'receiveDateTime'
+  ];
+
+  // Get missing required fields
+  const getMissingFields = (data: ComputerEquipmentFormData): string[] => {
+    return requiredFields.filter(field => {
+      const value = data[field as keyof ComputerEquipmentFormData];
+      return !value || value === '';
+    });
+  };
+
   const handleMessageSent = (message: string, parsedData: SmartFormData | null) => {
     console.log('Processing message:', message);
     console.log('Parsed smart form data:', parsedData);
     
     if (parsedData) {
-      // Convert SmartFormData to ComputerEquipmentFormData
+      // 2 ▶️ merge เข้า state ฟอร์มก่อน validate
       const convertedData = convertSmartFormToFormData(parsedData);
       
       // Merge with existing form data, keeping non-null values from converted data
@@ -67,6 +102,33 @@ const ThreeColumnLayout: React.FC = () => {
       
       console.log('Updated form data:', updatedFormData);
       setFormData(updatedFormData);
+
+      // 3 ▶️ ตรวจเฉพาะช่อง * ที่ยังว่าง และแสดง validation errors
+      const missingFields = getMissingFields(updatedFormData);
+      
+      if (missingFields.length > 0) {
+        // แสดง toast สำหรับ missing fields
+        const missingFieldsText = missingFields
+          .map(field => fieldNameMap[field] || field)
+          .join(', ');
+          
+        toast({
+          title: language === 'th' ? 'กรุณาระบุข้อมูลเพิ่มเติม' : 'Please provide additional information',
+          description: language === 'th' 
+            ? `กรุณาระบุ: ${missingFieldsText}`
+            : `Please specify: ${missingFieldsText}`,
+          variant: "destructive"
+        });
+      } else {
+        // ถ้าครบทุกช่อง แสดง success message
+        toast({
+          title: language === 'th' ? 'สำเร็จ' : 'Success',
+          description: language === 'th' 
+            ? 'ข้อมูลครบถ้วนแล้ว พร้อมส่งคำขอ'
+            : 'All required fields completed. Ready to submit.',
+          variant: "default"
+        });
+      }
     }
   };
 
