@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -99,5 +100,12 @@
 
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* ✅ Chat panel height fix */
+@layer utilities {
+  .chat-panel {
+    @apply flex flex-col h-[calc(100vh-4rem)];
   }
 }

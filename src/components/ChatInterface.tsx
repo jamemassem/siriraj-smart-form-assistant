@@ -30,6 +30,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
   const [isListening, setIsListening] = useState(false);
   const [showMic, setShowMic] = useState(true);
   const recognitionRef = useRef<any>(null);
+  const chatBoxRef = useRef<HTMLDivElement>(null);
 
   // Check if API key is needed (development only)
   const needKey = !import.meta.env.VITE_OPENROUTER_API_KEY && 
@@ -38,6 +39,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
 
   // Check if speech recognition is available
   const hasSpeechRecognition = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+
+  // ✅ Auto-scroll ทุกครั้งที่ messages เปลี่ยน
+  useEffect(() => {
+    if (chatBoxRef.current) {
+      chatBoxRef.current.scrollTo({ 
+        top: chatBoxRef.current.scrollHeight,
+        behavior: 'smooth' 
+      });
+    }
+  }, [messages]);
 
   useEffect(() => {
     // Initialize with welcome message (professional tone, no emojis)
@@ -101,7 +112,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
     }
   };
 
-  // ✅ เปลี่ยน handleSendMessage ให้ทำลำดับดังนี้
+  // ✅ ปรับ workflow ตาม PATCH - extract first + validate after
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isProcessing) return;
 
@@ -119,28 +130,28 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
     setInputValue('');
 
     try {
-      const detectedLanguage = openRouterService.detectLanguage(currentInput);
+      // ▶️ 1. Detect language + isRequest
       const isRequest = openRouterService.isEquipmentRequest(currentInput);
+      const detectedLanguage = openRouterService.detectLanguage(currentInput);
       
       console.log('Detected language:', detectedLanguage, 'Is request:', isRequest);
       
       let parsedData: SmartFormData | null = null;
-      let responseMessage = '';
       
+      // ▶️ 2. ถ้าเป็นคำขอยืม ให้ LLM สกัดข้อมูล
       if (isRequest) {
-        // 1 ▶️ เรียก LLM สกัดข้อมูล
         parsedData = await openRouterService.parseEquipmentRequest(currentInput, detectedLanguage);
         console.log('Extracted data:', parsedData);
         
-        // 2 ▶️ ส่งข้อมูลไปยัง parent component เพื่อ merge เข้า state ฟอร์ม
+        // ▶️ 3. ส่งข้อมูลไปยัง parent component เพื่อ merge เข้า state ฟอร์ม **ก่อน** validate
         onMessageSent(currentInput, parsedData);
-        
-        // 3 ▶️ สร้างคำตอบสำเร็จ (ไม่ต้องตรวจสอบ missing fields ที่นี่)
-        responseMessage = await openRouterService.generateResponse(currentInput, detectedLanguage, true);
       } else {
-        // สำหรับข้อความทั่วไป
-        responseMessage = await openRouterService.generateResponse(currentInput, detectedLanguage, false);
+        // สำหรับข้อความทั่วไป ส่ง null เป็น parsedData
+        onMessageSent(currentInput, null);
       }
+      
+      // ▶️ 4. สร้างคำตอบ (parent จะจัดการ validation เอง)
+      const responseMessage = await openRouterService.generateResponse(currentInput, detectedLanguage, isRequest);
       
       setTimeout(() => {
         const assistantMessage: Message = {
@@ -191,8 +202,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
         <ApiKeyModal onSave={(apiKey) => localStorage.setItem('or_key', apiKey)} />
       )}
 
-      <Card className="h-full">
-        <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
+      <Card className="h-full chat-panel">
+        <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 flex-none">
           <CardTitle className="flex items-center gap-2 text-gray-800">
             <MessageCircle className="w-5 h-5 text-blue-600" />
             เเชทบอทช่วยกรอกแบบฟอร์มอัตโนมัติ
@@ -203,7 +214,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
         </CardHeader>
         
         <CardContent className="p-0 flex flex-col h-full">
-          <ScrollArea className="flex-1 p-4">
+          {/* ✅ Scroll container with ref */}
+          <div 
+            ref={chatBoxRef}
+            className="flex-1 overflow-y-auto p-4"
+          >
             <div className="space-y-4">
               {messages.map((message) => (
                 <div
@@ -236,9 +251,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent }) => {
                 </div>
               )}
             </div>
-          </ScrollArea>
+          </div>
           
-          <div className="p-4 border-t bg-gray-50">
+          {/* ✅ Input section - flex-none */}
+          <div className="flex-none p-4 border-t bg-gray-50">
             <div className="flex gap-2">
               <Input
                 value={inputValue}

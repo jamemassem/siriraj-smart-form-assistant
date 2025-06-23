@@ -1,4 +1,3 @@
-
 interface OpenRouterMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
@@ -52,17 +51,19 @@ const getApiKey = (): string | null => {
   return localStorage.getItem('or_key') || import.meta.env.VITE_OPENROUTER_API_KEY || null;
 };
 
-// NEW helper – ตัด markdown + ข้อความอื่น แล้ว parse JSON
+// ✅ Enhanced JSON extraction helper
 const extractJson = (raw: string): any => {
   try {
     // หา JSON block ในข้อความ
     const match = raw.match(/\{[\s\S]*\}/);
     if (match) {
-      return JSON.parse(match[0]);
+      const parsed = JSON.parse(match[0]);
+      return typeof parsed === 'object' ? parsed : {};
     }
     
     // ถ้าไม่เจอ JSON ให้ลอง parse ทั้งหมด
-    return JSON.parse(raw.trim());
+    const parsed = JSON.parse(raw.trim());
+    return typeof parsed === 'object' ? parsed : {};
   } catch (error) {
     console.error('Failed to extract JSON:', error);
     return {};
@@ -165,11 +166,11 @@ class OpenRouterService {
     return chatOpenRouter(messages);
   }
 
-  // ✅ แก้คืนค่าจาก parseEquipmentRequest() ให้เป็น object
+  // ✅ แก้ให้คืนค่าเป็น object เสมอ
   async parseEquipmentRequest(text: string, language: 'th' | 'en'): Promise<SmartFormData> {
     const currentDateTime = this.getCurrentDateTime();
     
-    const systemPrompt = `คุณคือผู้ช่วย AI อัจฉริยะ (Smart Form Assistant v2.0) ที่เชี่ยวชาญด้านการวิเคราะห์ข้อความภาษาไทยเพื่อกรอก "แบบฟอร์มขอยืมครุภัณฑ์คอมพิวเตอร์" โดยอัตโนมัติ
+    const systemPrompt = `คุณคือผู้ช่วย AI อัจฉริยะ (Smart Form Assistant v3.0) ที่เชี่ยวชาญด้านการวิเคราะห์ข้อความภาษาไทยเพื่อกรอก "แบบฟอร์มขอยืมครุภัณฑ์คอมพิวเตอร์" โดยอัตโนมัติ
 
 **เป้าหมายหลัก:** สกัดข้อมูลที่เกี่ยวข้องทั้งหมดจากข้อความภาษาไทยเพื่อกรอกลงในฟอร์ม JSON ให้ถูกต้องและครบถ้วนที่สุด
 
@@ -201,7 +202,7 @@ class OpenRouterService {
 - สาย HDMI → "HDMI Adapter"
 - อื่นๆ → "Other"
 
-🛑 IMPORTANT: ตอบกลับเป็น JSON raw object เท่านั้น ไม่มีคำอธิบายอื่น
+🛑 CRITICAL: Respond ONLY with a raw JSON object, without markdown or explanation.
 
 **ตัวอย่าง Input/Output:**
 Input: "ขอยืมโปรเจคเตอร์วันศุกร์หน้า เวลา 13:00-15:00 ที่ห้องประชุมชั้น 2"
@@ -244,11 +245,11 @@ Output:
       const response = await this.chat(messages);
       console.log('Raw AI Response for parsing:', response);
       
-      // ใช้ extractJson helper แทนการ parse JSON โดยตรง
+      // ✅ ใช้ extractJson helper และแน่ใจว่าได้ object
       const parsedData = extractJson(response);
       console.log('Successfully parsed JSON:', parsedData);
       
-      // ส่งคืนข้อมูลที่ parse ได้ หรือ default structure
+      // ✅ ส่งคืนข้อมูลที่ merge กับ default structure
       return { ...this.getFormStructure(), ...parsedData };
     } catch (error) {
       console.error('Error parsing equipment request:', error);
@@ -272,6 +273,7 @@ Output:
 
   async generateResponse(userMessage: string, language: 'th' | 'en', isRequest: boolean): Promise<string> {
     if (!isRequest) {
+      // ... keep existing code (general conversation handling)
       const systemPrompt = language === 'th'
         ? `คุณเป็นผู้ช่วยกรอกแบบฟอร์มยืมอุปกรณ์คอมพิวเตอร์ของคณะแพทยศาสตร์ศิริราชพยาบาล มหาวิทยาลัยมหิดล
         
@@ -310,6 +312,7 @@ For general conversation, respond politely and helpfully.`;
   }
 
   isEquipmentRequest(text: string): boolean {
+    // ... keep existing code (request detection logic)
     const lowerText = text.toLowerCase();
     
     const thaiRequestKeywords = [
@@ -323,7 +326,7 @@ For general conversation, respond politely and helpfully.`;
     ];
     
     const equipmentKeywords = [
-      'โน้ตบุ๊ค', 'แล็ปท็อป', 'คอมพิวเตอร์', 'notebook', 'laptop', 'computer',
+      'โน้ตบุ๊ก', 'แล็ปท็อป', 'คอมพิวเตอร์', 'notebook', 'laptop', 'computer',
       'โปรเจคเตอร์', 'เครื่องฉาย', 'projector',
       'หับ', 'ฮับ', 'hub',
       'เราท์เตอร์', 'router',
