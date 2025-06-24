@@ -9,11 +9,11 @@ const API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY || localStorage.getItem(
 if (!API_KEY) throw new Error('Missing OpenRouter API-Key');
 
 const ENDPT = 'https://openrouter.ai/api/v1/chat/completions';
-const MODEL = 'qwen/qwen2.5-72b-instruct';
+const MODEL = 'google/gemini-2.0-flash-experimental';
 
-export async function chat(messages: ORMsg[], t = 0.0, max = 512): Promise<string> {
+export async function chat(messages: ORMsg[], t = 0.0, max = 1024): Promise<string> {
   const ctrl = new AbortController();
-  const id = setTimeout(() => ctrl.abort(), 20000);
+  const id = setTimeout(() => ctrl.abort(), 30000);
   const body: ORReq = { model: MODEL, messages, temperature: t, max_tokens: max };
   
   try {
@@ -22,7 +22,7 @@ export async function chat(messages: ORMsg[], t = 0.0, max = 512): Promise<strin
       headers: {
         Authorization: `Bearer ${API_KEY}`,
         'Content-Type': 'application/json',
-        'User-Agent': 'SmartFormAssistant/2.0'
+        'User-Agent': 'SmartFormAssistant/3.0'
       },
       body: JSON.stringify(body),
       signal: ctrl.signal
@@ -53,12 +53,24 @@ const extractJSON = (txt: string) => {
   }
 }
 
-// ---------- public  --------------------------------------------------
-export async function parseEquipmentRequest(text: string, lang: 'th' | 'en') {
-  const SYS = lang === 'th'
-    ? `คุณคือผู้ช่วยกรอกแบบฟอร์มขอยืมอุปกรณ์คอมพิวเตอร์ ให้แปลงข้อความของผู้ใช้เป็น JSON โดยตรง
+// ---------- public --------------------------------------------------
+export async function parseEquipmentRequest(conversationHistory: string[], currentInput: string, lang: 'th' | 'en') {
+  const currentDate = new Date().toISOString();
+  
+  const SYS = `You are a highly advanced AI Form Assistant for "Siriraj Hospital Computer Equipment Borrowing System". Your primary function is to analyze Thai conversations and extract information to populate a JSON form.
 
-กรอกข้อมูลเฉพาะที่มีในข้อความ ห้ามเดา ใช้รูปแบบ JSON นี้:
+**CRITICAL INSTRUCTIONS:**
+1. **JSON ONLY:** Your entire response MUST be a single, raw JSON object. Do not use markdown (\`\`\`json), explanations, or any text outside the JSON structure.
+2. **NO GUESSING:** Only fill fields for which information is explicitly provided in the user's text. For all other fields, use \`null\`.
+3. **CONTEXT AWARENESS:** The conversation history is provided. If information (like a user's name or phone number) already exists in the form context, DO NOT overwrite it unless the user explicitly asks for a change.
+4. **ACCURATE TIME CALCULATION:** Use the provided CURRENT_DATETIME to resolve relative time expressions like "พรุ่งนี้" (tomorrow), "ศุกร์หน้า" (next Friday), "บ่ายโมง" (1 PM). Today is Saturday, June 22, 2025.
+   - "พรุ่งนี้" -> "2025-06-23"
+   - "วันจันทร์หน้า" -> "2025-06-30"
+   - "วันศุกร์หน้า" -> "2025-06-27"
+   - "13:00-15:00" or "บ่ายโมงถึงบ่ายสาม" -> start: "T13:00:00", end: "T15:00:00"
+5. **SUBJECT & PURPOSE:** Infer a concise \`subject\` (e.g., "ขอยืมโปรเจคเตอร์") and a \`purpose\` (e.g., "สำหรับนำเสนอผลงาน") from the context. If not clear, use "การใช้งานทั่วไป".
+
+**JSON SCHEMA TO USE:**
 {
   "employee_id": null,
   "full_name": null,
@@ -68,61 +80,26 @@ export async function parseEquipmentRequest(text: string, lang: 'th' | 'en') {
   "unit": null,
   "phone": null,
   "email": null,
-  "subject": null,
-  "equipment_type": "โปรเจคเตอร์|แล็ปท็อป|คอมพิวเตอร์|...",
+  "subject": "ขอยืม [equipment_type]",
+  "equipment_type": "Notebook|Projector|Hub|Mouse|Monitor|Dock|Other",
   "quantity": "1",
-  "purpose": null,
-  "start_datetime": "2025-01-10T13:00:00",
-  "end_datetime": "2025-01-10T15:00:00",
+  "purpose": "สำหรับประชุม|สำหรับนำเสนอผลงาน|การใช้งานทั่วไป",
+  "start_datetime": "YYYY-MM-DDTHH:MM:SS",
+  "end_datetime": "YYYY-MM-DDTHH:MM:SS",
   "install_location": null,
-  "default_software": false,
-  "extra_software_choice": "no",
-  "extra_software_name": null,
   "coordinator": null,
   "coordinator_phone": null,
-  "receiver": null,
   "receive_datetime": null,
-  "remark": null,
-  "attachment": null
+  "remark": null
 }
 
-ตอบเป็น JSON object เท่านั้น ไม่ต้องมี markdown หรือคำอธิบาย`
-    : `You are a smart form assistant for computer equipment borrowing. Convert user message to JSON format.
-
-Fill only the information available in the message. Do not guess. Use this JSON structure:
-{
-  "employee_id": null,
-  "full_name": null,
-  "position": null,
-  "department": null,
-  "division": null,
-  "unit": null,
-  "phone": null,
-  "email": null,
-  "subject": null,
-  "equipment_type": "projector|laptop|computer|...",
-  "quantity": "1",
-  "purpose": null,
-  "start_datetime": "2025-01-10T13:00:00",
-  "end_datetime": "2025-01-10T15:00:00",
-  "install_location": null,
-  "default_software": false,
-  "extra_software_choice": "no",
-  "extra_software_name": null,
-  "coordinator": null,
-  "coordinator_phone": null,
-  "receiver": null,
-  "receive_datetime": null,
-  "remark": null,
-  "attachment": null
-}
-
-Respond with raw JSON object only. No markdown or explanations.`;
+CURRENT_DATETIME: ${currentDate}
+CONVERSATION_HISTORY: ${conversationHistory.join('\n')}`;
 
   try {
     const rsp = await chat([
       { role: 'system', content: SYS },
-      { role: 'user', content: text }
+      { role: 'user', content: currentInput }
     ]);
     
     console.log('Raw AI Response:', rsp);
@@ -172,4 +149,3 @@ export function isEquipmentRequest(text: string): boolean {
   
   return hasRequestKeyword && hasEquipmentKeyword;
 }
-

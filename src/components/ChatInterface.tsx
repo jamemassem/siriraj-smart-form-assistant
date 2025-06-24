@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, MessageCircle, Mic, MicOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -33,37 +32,24 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent, formData, 
   const recognitionRef = useRef<any>(null);
   const chatRef = useRef<HTMLDivElement>(null);
 
-  // Field name mapping for Thai error messages
-  const fieldNameMap: Record<string, string> = {
-    'phone': 'เบอร์โทรศัพท์',
-    'subject': 'หัวข้อเรื่อง',
+  // Required fields mapping and priority order
+  const requiredFieldsMap: Record<string, string> = {
     'equipmentType': 'ประเภทอุปกรณ์',
-    'quantity': 'จำนวน',
-    'purpose': 'วัตถุประสงค์',
-    'startDate': 'วันที่เริ่มต้น',
-    'startTime': 'เวลาเริ่มต้น',
-    'endDate': 'วันที่สิ้นสุด',
-    'endTime': 'เวลาสิ้นสุด',
-    'installLocation': 'สถานที่ติดตั้ง',
+    'startDate': 'วันที่เริ่มใช้งาน',
+    'startTime': 'เวลาเริ่มใช้งาน',
+    'endDate': 'วันที่สิ้นสุดการใช้งาน',
+    'endTime': 'เวลาสิ้นสุดการใช้งาน',
+    'installLocation': 'สถานที่ติดตั้ง/ใช้งาน',
+    'purpose': 'วัตถุประสงค์การใช้งาน',
     'coordinatorName': 'ชื่อผู้ประสานงาน',
     'coordinatorPhone': 'เบอร์โทรผู้ประสานงาน',
-    'receiveDateTime': 'วันและเวลารับของ'
+    'phone': 'เบอร์โทรศัพท์ผู้ขอยืม'
   };
 
-  // Required fields that must be filled
-  const requiredFields = [
-    'phone', 'subject', 'equipmentType', 'quantity', 'purpose',
-    'startDate', 'startTime', 'endDate', 'endTime', 'installLocation',
-    'coordinatorName', 'coordinatorPhone', 'receiveDateTime'
+  const priorityFieldOrder = [
+    'equipmentType', 'startDate', 'startTime', 'endDate', 'endTime', 
+    'installLocation', 'purpose', 'coordinatorName', 'coordinatorPhone', 'phone'
   ];
-
-  // Get missing required fields
-  const getMissingRequiredFields = (): string[] => {
-    return requiredFields.filter(field => {
-      const value = formData[field as keyof ComputerEquipmentFormData];
-      return !value || value === '';
-    });
-  };
 
   // Check if API key is needed (development only)
   const needKey = !import.meta.env.VITE_OPENROUTER_API_KEY && 
@@ -84,7 +70,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent, formData, 
   }, [messages]);
 
   useEffect(() => {
-    // Initialize with welcome message (professional tone, no emojis)
+    // Initialize with welcome message
     const welcomeMessage: Message = {
       id: '1',
       text: language === 'th' 
@@ -129,6 +115,73 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent, formData, 
       }
     }
   }, [language, hasSpeechRecognition]);
+
+  // Get the first missing required field in priority order
+  const getFirstMissingField = (): string | null => {
+    for (const field of priorityFieldOrder) {
+      const value = formData[field as keyof ComputerEquipmentFormData];
+      if (!value || value === '') {
+        return field;
+      }
+    }
+    return null;
+  };
+
+  // Generate conversation context from recent messages
+  const getConversationContext = (): string[] => {
+    return messages.slice(-6).map(msg => 
+      `${msg.isUser ? 'User' : 'Assistant'}: ${msg.text}`
+    );
+  };
+
+  // Generate smart question for missing field
+  const generateSmartQuestion = (missingField: string, lang: 'th' | 'en'): string => {
+    const questions: Record<string, Record<string, string>> = {
+      'equipmentType': {
+        'th': 'ต้องการยืมอุปกรณ์ประเภทใดครับ (เช่น โปรเจคเตอร์, โน้ตบุ๊ก, หรือ อื่นๆ)',
+        'en': 'What type of equipment would you like to borrow? (e.g., projector, notebook, etc.)'
+      },
+      'startDate': {
+        'th': 'ต้องการใช้งานวันไหนครับ',
+        'en': 'What date would you like to use it?'
+      },
+      'startTime': {
+        'th': 'ต้องการเริ่มใช้งานเวลาใดครับ',
+        'en': 'What time would you like to start using it?'
+      },
+      'endDate': {
+        'th': 'จะใช้งานจนถึงวันไหนครับ',
+        'en': 'Until what date will you use it?'
+      },
+      'endTime': {
+        'th': 'จะใช้งานจนถึงเวลาใดครับ',
+        'en': 'Until what time will you use it?'
+      },
+      'installLocation': {
+        'th': 'ต้องการติดตั้งหรือใช้งานที่ไหนครับ',
+        'en': 'Where would you like to install or use it?'
+      },
+      'purpose': {
+        'th': 'ต้องการใช้เพื่อวัตถุประสงค์อะไรครับ',
+        'en': 'What is the purpose of using this equipment?'
+      },
+      'coordinatorName': {
+        'th': 'ใครจะเป็นผู้ประสานงานสำหรับคำขอนี้ครับ',
+        'en': 'Who will be the coordinator for this request?'
+      },
+      'coordinatorPhone': {
+        'th': 'เบอร์โทรของผู้ประสานงานครับ',
+        'en': 'What is the coordinator\'s phone number?'
+      },
+      'phone': {
+        'th': 'ขอเบอร์โทรศัพท์ติดต่อด้วยครับ',
+        'en': 'May I have your contact phone number?'
+      }
+    };
+
+    return questions[missingField]?.[lang] || 
+           (lang === 'th' ? 'กรุณาระบุข้อมูลเพิ่มเติมครับ' : 'Please provide additional information');
+  };
 
   const addBot = (text: string) => {
     const assistantMessage: Message = {
@@ -200,7 +253,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent, formData, 
     }
   };
 
-  // NEW EXTRACT-FIRST WORKFLOW
+  // NEW CHAIN OF THOUGHT WORKFLOW
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isProcessing) return;
 
@@ -218,47 +271,45 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent, formData, 
     setInputValue('');
 
     try {
-      // 1. Detect language
+      // 1. [รวบรวม Context] - Get conversation history
+      const conversationHistory = getConversationContext();
+      
+      // 2. Detect language and intent
       const lang = openRouter.detectLang(userInput);
-      console.log('Detected language:', lang);
-      
-      // 2. Check if it's an equipment request
       const isRequest = openRouter.isEquipmentRequest(userInput);
-      console.log('Is equipment request:', isRequest);
       
-      if (isRequest) {
-        // 3. EXTRACT step → fill form
-        const extracted = await openRouter.parseEquipmentRequest(userInput, lang);
+      if (isRequest || conversationHistory.some(msg => msg.includes('ยืม') || msg.includes('borrow'))) {
+        // 3. [สกัดข้อมุล] - Extract information using context
+        const extracted = await openRouter.parseEquipmentRequest(conversationHistory, userInput, lang);
         console.log('Extracted data:', extracted);
         
-        if (Object.keys(extracted).length) {
+        // 4. [กรอกฟอร์ม] - Update form if we got data
+        if (Object.keys(extracted).length > 0) {
           updateForm(extracted);
         }
         
-        // 4. VALIDATE after merge
-        const missing = getMissingRequiredFields();
-        console.log('Missing fields:', missing);
-        
-        if (missing.length) {
-          const missingFieldsText = missing
-            .map(field => fieldNameMap[field] || field)
-            .join('\n❗ ');
+        // 5. [ตรวจสอบหาจุดถัดไป] - Check for next missing field
+        setTimeout(() => {
+          const firstMissingField = getFirstMissingField();
           
-          addBot(lang === 'th'
-            ? `โปรดระบุข้อมูลเพิ่มเติมดังนี้:\n❗ ${missingFieldsText}`
-            : `Please provide the following information:\n❗ ${missing.join('\n❗ ')}`
-          );
-        } else {
-          addBot(lang === 'th'
-            ? 'ได้อัพเดตข้อมูลในแบบฟอร์มเรียบร้อยแล้ว กรุณาตรวจสอบความถูกต้องก่อนส่งครับ'
-            : 'I have updated the form. Please review before submitting.'
-          );
-        }
+          if (firstMissingField) {
+            // 6. [สร้างการตอบสนองอัจฉริยะ] - Generate smart question
+            const smartQuestion = generateSmartQuestion(firstMissingField, lang);
+            addBot(smartQuestion);
+          } else {
+            // All required fields are filled
+            addBot(lang === 'th'
+              ? 'ข้อมูลในแบบฟอร์มครบถ้วนแล้วครับ กรุณาตรวจสอบความถูกต้องอีกครั้งก่อนส่งคำขอ'
+              : 'All required information has been collected. Please review the form before submitting.'
+            );
+          }
+        }, 100); // Small delay to ensure form is updated
+        
       } else {
-        // General chat response
+        // Handle general questions
         addBot(lang === 'th'
-          ? 'กรุณาระบุคำขอยืมอุปกรณ์ที่ชัดเจน เช่น "ขอยืมโปรเจคเตอร์วันศุกร์หน้า เวลา 13:00-15:00"'
-          : 'Please specify your equipment borrowing request clearly, e.g., "I want to borrow a projector next Friday from 1-3 PM"'
+          ? 'รับทราบครับ หากมีเรื่องการยืมอุปกรณ์คอมพิวเตอร์ให้ช่วยเหลือ โปรดแจ้งมาได้เลยครับ'
+          : 'I understand. If you need help with computer equipment borrowing, please let me know.'
         );
       }
       
@@ -305,7 +356,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent, formData, 
             แชทบอทช่วยกรอกแบบฟอร์มอัตโนมัติ
           </CardTitle>
           <p className="text-xs text-gray-600 mt-1">
-            {language === 'th' ? 'แชทบอทอัจฉริยะวิเคราะห์ภาษาไทย | รองรับเสียง | ตรวจสอบอัตโนมัติ' : 'Smart Thai AI | Voice supported | Auto validation'}
+            {language === 'th' ? 'แชทบอทอัจฉริยะใช้ Gemini 2.0 Flash | รองรับเสียง | ตรวจสอบอัตโนมัติ' : 'Smart AI using Gemini 2.0 Flash | Voice supported | Auto validation'}
           </p>
         </CardHeader>
         
@@ -396,4 +447,3 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent, formData, 
 };
 
 export default ChatInterface;
-
