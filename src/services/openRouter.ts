@@ -1,4 +1,5 @@
 
+
 // --- types ----------------------------------------------------------
 interface ORMsg { role:'system'|'user'|'assistant'; content:string }
 interface ORReq { model:string; messages:ORMsg[]; temperature:number; max_tokens:number }
@@ -62,7 +63,7 @@ export async function parseEquipmentRequest(conversationHistory: string[], curre
 **CRITICAL INSTRUCTIONS:**
 1. **JSON ONLY:** Your entire response MUST be a single, raw JSON object. Do not use markdown (\`\`\`json), explanations, or any text outside the JSON structure.
 2. **NO GUESSING:** Only fill fields for which information is explicitly provided in the user's text. For all other fields, use \`null\`.
-3. **CONTEXT AWARENESS:** The conversation history is provided. You MUST analyze it to understand the full context. If information (like a user's name or phone number) already exists, DO NOT overwrite it unless the user explicitly asks for a change.
+3. **CONTEXT AWARENESS:** The conversation history is provided. You MUST analyze it to understand the full context. If information already exists, DO NOT overwrite it unless the user explicitly asks for a change (e.g., "เปลี่ยนเป็นโปรเจคเตอร์นะ").
 4. **ACCURATE TIME CALCULATION:** Use the provided CURRENT_DATETIME to resolve relative time expressions like "พรุ่งนี้" (tomorrow), "ศุกร์หน้า" (next Friday), "บ่ายโมง" (1 PM). Today is Saturday, June 22, 2025.
    - "พรุ่งนี้" -> "2025-06-23"
    - "วันจันทร์หน้า" -> "2025-06-30"
@@ -72,25 +73,7 @@ export async function parseEquipmentRequest(conversationHistory: string[], curre
 
 **JSON SCHEMA TO USE:**
 {
-  "employee_id": null,
-  "full_name": null,
-  "position": null,
-  "department": null,
-  "division": null,
-  "unit": null,
-  "phone": null,
-  "email": null,
-  "subject": "ขอยืม [equipment_type]",
-  "equipment_type": "Notebook|Projector|Hub|Mouse|Monitor|Dock|Other",
-  "quantity": "1",
-  "purpose": "สำหรับประชุม|สำหรับนำเสนอผลงาน|การใช้งานทั่วไป",
-  "start_datetime": "YYYY-MM-DDTHH:MM:SS",
-  "end_datetime": "YYYY-MM-DDTHH:MM:SS",
-  "install_location": null,
-  "coordinator": null,
-  "coordinator_phone": null,
-  "receive_datetime": null,
-  "remark": null
+  "employee_id": null, "full_name": null, "position": null, "department": null, "division": null, "unit": null, "phone": null, "email": null, "subject": "ขอยืม [equipment_type]", "equipment_type": "Notebook|Projector|Hub|Mouse|Monitor|Dock|Other", "quantity": "1", "purpose": "สำหรับประชุม|สำหรับนำเสนอผลงาน|การใช้งานทั่วไป", "start_datetime": "YYYY-MM-DDTHH:MM:SS", "end_datetime": "YYYY-MM-DDTHH:MM:SS", "install_location": null, "coordinator": null, "coordinator_phone": null, "receive_datetime": null, "remark": null
 }
 
 CURRENT_DATETIME: ${currentDate}
@@ -149,3 +132,4 @@ export function isEquipmentRequest(text: string): boolean {
   
   return hasRequestKeyword && hasEquipmentKeyword;
 }
+
