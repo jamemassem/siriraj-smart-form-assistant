@@ -62,7 +62,7 @@ export async function parseEquipmentRequest(conversationHistory: string[], curre
 **CRITICAL INSTRUCTIONS:**
 1. **JSON ONLY:** Your entire response MUST be a single, raw JSON object. Do not use markdown (\`\`\`json), explanations, or any text outside the JSON structure.
 2. **NO GUESSING:** Only fill fields for which information is explicitly provided in the user's text. For all other fields, use \`null\`.
-3. **CONTEXT AWARENESS:** The conversation history is provided. If information (like a user's name or phone number) already exists in the form context, DO NOT overwrite it unless the user explicitly asks for a change.
+3. **CONTEXT AWARENESS:** The conversation history is provided. You MUST analyze it to understand the full context. If information (like a user's name or phone number) already exists, DO NOT overwrite it unless the user explicitly asks for a change.
 4. **ACCURATE TIME CALCULATION:** Use the provided CURRENT_DATETIME to resolve relative time expressions like "พรุ่งนี้" (tomorrow), "ศุกร์หน้า" (next Friday), "บ่ายโมง" (1 PM). Today is Saturday, June 22, 2025.
    - "พรุ่งนี้" -> "2025-06-23"
    - "วันจันทร์หน้า" -> "2025-06-30"

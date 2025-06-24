@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, MessageCircle, Mic, MicOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -116,10 +117,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent, formData, 
     }
   }, [language, hasSpeechRecognition]);
 
-  // Get the first missing required field in priority order
-  const getFirstMissingField = (): string | null => {
+  // Get the first missing required field in priority order using specific form data
+  const getFirstMissingField = (checkFormData: ComputerEquipmentFormData): string | null => {
     for (const field of priorityFieldOrder) {
-      const value = formData[field as keyof ComputerEquipmentFormData];
+      const value = checkFormData[field as keyof ComputerEquipmentFormData];
       if (!value || value === '') {
         return field;
       }
@@ -193,7 +194,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent, formData, 
     setMessages(prev => [...prev, assistantMessage]);
   };
 
-  const updateForm = (extracted: any) => {
+  const updateForm = (extracted: any): ComputerEquipmentFormData => {
     // Convert extracted data to form format
     const smartFormData: SmartFormData = {
       employee_id: extracted.employee_id || null,
@@ -226,16 +227,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent, formData, 
 
     const convertedData = convertSmartFormToFormData(smartFormData);
     
-    // Merge with existing form data
-    const updatedFormData = { ...formData };
+    // Create nextFormData by merging current formData with new convertedData
+    const nextFormData = { ...formData };
     Object.keys(convertedData).forEach(key => {
       const value = convertedData[key as keyof ComputerEquipmentFormData];
       if (value !== undefined && value !== null && value !== '') {
-        updatedFormData[key as keyof ComputerEquipmentFormData] = value as any;
+        nextFormData[key as keyof ComputerEquipmentFormData] = value as any;
       }
     });
     
-    onFormDataChange(updatedFormData);
+    return nextFormData;
   };
 
   const startListening = () => {
@@ -253,7 +254,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent, formData, 
     }
   };
 
-  // NEW CHAIN OF THOUGHT WORKFLOW
+  // CHAIN OF THOUGHT WORKFLOW IMPLEMENTATION
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isProcessing) return;
 
@@ -283,27 +284,29 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onMessageSent, formData, 
         const extracted = await openRouter.parseEquipmentRequest(conversationHistory, userInput, lang);
         console.log('Extracted data:', extracted);
         
-        // 4. [กรอกฟอร์ม] - Update form if we got data
+        // 4. [สร้างข้อมูลชุดถัดไป - CRITICAL STEP] - Create nextFormData
+        let nextFormData = formData;
         if (Object.keys(extracted).length > 0) {
-          updateForm(extracted);
+          nextFormData = updateForm(extracted);
         }
         
-        // 5. [ตรวจสอบหาจุดถัดไป] - Check for next missing field
-        setTimeout(() => {
-          const firstMissingField = getFirstMissingField();
-          
-          if (firstMissingField) {
-            // 6. [สร้างการตอบสนองอัจฉริยะ] - Generate smart question
-            const smartQuestion = generateSmartQuestion(firstMissingField, lang);
-            addBot(smartQuestion);
-          } else {
-            // All required fields are filled
-            addBot(lang === 'th'
-              ? 'ข้อมูลในแบบฟอร์มครบถ้วนแล้วครับ กรุณาตรวจสอบความถูกต้องอีกครั้งก่อนส่งคำขอ'
-              : 'All required information has been collected. Please review the form before submitting.'
-            );
-          }
-        }, 100); // Small delay to ensure form is updated
+        // 5. [สั่งอัปเดต UI] - Update form with nextFormData
+        onFormDataChange(nextFormData);
+        
+        // 6. [ตรวจสอบหาจุดถัดไป] - Check for next missing field using nextFormData
+        const firstMissingField = getFirstMissingField(nextFormData);
+        
+        if (firstMissingField) {
+          // 7. [สร้างการตอบสนองอัจฉริยะ] - Generate smart question
+          const smartQuestion = generateSmartQuestion(firstMissingField, lang);
+          addBot(smartQuestion);
+        } else {
+          // All required fields are filled
+          addBot(lang === 'th'
+            ? 'ข้อมูลในแบบฟอร์มครบถ้วนแล้วครับ กรุณาตรวจสอบความถูกต้องอีกครั้งก่อนส่งคำขอ'
+            : 'All required information has been collected. Please review the form before submitting.'
+          );
+        }
         
       } else {
         // Handle general questions
