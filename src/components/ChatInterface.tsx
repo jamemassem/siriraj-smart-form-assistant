@@ -34,30 +34,30 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ formData, onFormDataChang
   const chatRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    addMessage(
-      'สวัสดีครับ ระบบช่วยกรอกแบบฟอร์มอัตโนมัติ โปรดแจ้งความประสงค์ของท่านได้เลยครับ',
-      'assistant'
-    );
-  }, []);
+    // Welcome message only once on initial render
+    setMessages([{ 
+        id: '1', 
+        text: 'สวัสดีครับ ระบบช่วยกรอกแบบฟอร์มอัตโนมัติ โปรดแจ้งความประสงค์ของท่านได้เลยครับ', 
+        role: 'assistant' 
+    }]);
+  }, []); // Empty dependency array ensures this runs only once
 
   useEffect(() => {
     chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages]);
   
-  const addMessage = (text: string, role: 'user' | 'assistant') => {
-    setMessages(prev => [...prev, { id: Date.now().toString(), text, role }]);
-  };
-
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isProcessing) return;
 
     const userInput = inputValue;
+    const newMessages: Message[] = [...messages, { id: Date.now().toString(), text: userInput, role: 'user' }];
+    
     setIsProcessing(true);
+    setMessages(newMessages);
     setInputValue('');
-    addMessage(userInput, 'user');
 
     try {
-      const history = messages.map(m => ({ role: m.role, content: m.text }));
+      const history = newMessages.map(m => ({ role: m.role, content: m.text }));
       const extractedData = await openRouter.getLLMResponse(history, userInput);
       
       if (Object.keys(extractedData).length > 0) {
@@ -80,17 +80,17 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ formData, onFormDataChang
               coordinatorPhone: 'ขอเบอร์โทรศัพท์ของผู้ประสานงานด้วยครับ',
               phone: 'ขอเบอร์โทรศัพท์ติดต่อกลับของผู้ยืมด้วยครับ',
           };
-          addMessage(questions[firstMissingField] || 'กรุณาระบุข้อมูลเพิ่มเติมครับ', 'assistant');
+          setMessages(prev => [...prev, { id: Date.now().toString(), text: questions[firstMissingField] || 'กรุณาระบุข้อมูลเพิ่มเติมครับ', role: 'assistant' }]);
         } else {
-          addMessage('ข้อมูลในแบบฟอร์มครบถ้วนแล้วครับ กรุณาตรวจสอบความถูกต้องอีกครั้งก่อนส่งคำขอ', 'assistant');
+          setMessages(prev => [...prev, { id: Date.now().toString(), text: 'ข้อมูลในแบบฟอร์มครบถ้วนแล้วครับ กรุณาตรวจสอบความถูกต้องอีกครั้งก่อนส่งคำขอ', role: 'assistant' }]);
         }
       } else {
         const generalResponse = await openRouter.getGeneralResponse(userInput);
-        addMessage(generalResponse || "ขออภัยค่ะ ไม่เข้าใจคำถาม ลองใหม่อีกครั้งนะคะ", 'assistant');
+        setMessages(prev => [...prev, { id: Date.now().toString(), text: generalResponse || "ขออภัยค่ะ ไม่เข้าใจคำถาม ลองใหม่อีกครั้งนะคะ", role: 'assistant' }]);
       }
     } catch (error) {
       console.error('Error processing message:', error);
-      addMessage('เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง', 'assistant');
+      setMessages(prev => [...prev, { id: Date.now().toString(), text: 'เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง', role: 'assistant' }]);
       toast({ title: 'เกิดข้อผิดพลาด', variant: 'destructive' });
     } finally {
       setIsProcessing(false);
