@@ -48,11 +48,6 @@ const ThreeColumnLayout: React.FC = () => {
     attachments: []
   });
 
-  const handleMessageSent = (message: string, parsedData: SmartFormData | null) => {
-    console.log('Message sent from chat:', message);
-    // Chat interface now handles form updates internally
-  };
-
   const handleFormDataChange = (newFormData: ComputerEquipmentFormData) => {
     setFormData(newFormData);
   };
@@ -93,7 +88,6 @@ const ThreeColumnLayout: React.FC = () => {
             {/* Chat Interface - Full width on tablet, 1/3 on desktop */}
             <div className="lg:col-span-1 md:col-span-2 lg:col-span-1">
               <ChatInterface 
-                onMessageSent={handleMessageSent}
                 formData={formData}
                 onFormDataChange={handleFormDataChange}
               />
@@ -145,7 +139,6 @@ const ThreeColumnLayout: React.FC = () => {
           <div style={{height: 'calc(100vh - 200px)'}}>
             {!isMobileMenuOpen ? (
               <ChatInterface 
-                onMessageSent={handleMessageSent}
                 formData={formData}
                 onFormDataChange={handleFormDataChange}
               />
@@ -169,4 +162,3 @@ const ThreeColumnLayout: React.FC = () => {
 };
 
 export default ThreeColumnLayout;
-
